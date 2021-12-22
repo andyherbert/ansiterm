@@ -1,0 +1,12 @@
+[package]
+name = "ansiterm"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+winit = "0.26"
+pixels = "0.8"
+rodio = "0.14"
+ansiplay = { version = "^0.1", path = "../ansiplay" }
+ansiparser = { version = "^0.1", path = "../ansiparser" }
+codepage = { version = "^0.1", path = "../codepage" }
