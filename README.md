@@ -8,3 +8,5 @@ In `ansiterm/`:
 # Build
 In `ansiterm/`:
 > cargo build --release
+
+[![video in action](https://img.youtube.com/vi/0buttMxOTl4/0.jpg)](https://www.youtube.com/watch?v=0buttMxOTl4)
