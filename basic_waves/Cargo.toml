@@ -1,0 +1,15 @@
+[package]
+name = "basic_waves"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "A Basic Selection of wave generators for rodio"
+repository = "https://github.com/andyherbert/ansiterm"
+categories = [
+    "multimedia::audio",
+    "game-development",
+]
+
+[dependencies]
+rodio = "0.14"
+rand = "0.8"

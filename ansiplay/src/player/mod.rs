@@ -1,7 +1,7 @@
 use crate::{
     Articulation, MusicalEntity, MusicalNote, MusicalOperation, NoteInfo, NoteSign, SoundCodeInfo,
 };
-use rodio::source::{SineWave, Source};
+use basic_waves::{Source, SquareWave};
 use rodio::{OutputStreamHandle, Sink};
 use std::sync::mpsc::{channel, Receiver};
 use std::thread;
@@ -96,8 +96,9 @@ impl Player {
     }
 
     fn play_frequency(&self, frequency: f32, play_ms: usize, pause_ms: usize, sink: &Sink) {
-        let wave =
-            SineWave::new(frequency as u32).take_duration(Duration::from_millis(play_ms as u64));
+        let wave = SquareWave::new(frequency, 44800)
+            .amplify(0.1)
+            .take_duration(Duration::from_millis(play_ms as u64));
         sink.append(wave);
         sink.sleep_until_end();
         thread::sleep(Duration::from_millis(pause_ms as u64));

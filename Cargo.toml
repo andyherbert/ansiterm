@@ -4,5 +4,6 @@ members = [
     "ansiparser",
     "ansiplay",
     "ansiterm",
+    "basic_waves",
     "codepage",
 ]
