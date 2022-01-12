@@ -1,5 +1,6 @@
 use crate::{
     Articulation, MusicalEntity, MusicalNote, MusicalOperation, NoteInfo, NoteSign, SoundCodeInfo,
+    Variation,
 };
 
 pub struct MusicalSequenceIterator<'a> {
@@ -96,6 +97,22 @@ impl MusicalSequenceIterator<'_> {
         float.parse().ok()
     }
 
+    fn parse_sound_code_number_or_wildcard(
+        &mut self,
+        accept_whitespace: bool,
+    ) -> Option<Variation> {
+        match self.bytes.get(self.position)? {
+            // '*'
+            0x2a => {
+                self.position += 1;
+                Some(Variation::Random)
+            }
+            _ => Some(Variation::Value(
+                self.parse_sound_code_number(accept_whitespace)?,
+            )),
+        }
+    }
+
     fn parse_sign(&mut self) -> NoteSign {
         if self.position == self.bytes.len() {
             NoteSign::Natural
@@ -128,7 +145,7 @@ impl MusicalSequenceIterator<'_> {
         let duration = self.parse_sound_code_number(false);
         let cycles = self.parse_int(false, true);
         let delay = self.parse_int(false, true);
-        let variation = self.parse_sound_code_number(false);
+        let variation = self.parse_sound_code_number_or_wildcard(false);
         Some(SoundCodeInfo {
             frequency,
             duration,

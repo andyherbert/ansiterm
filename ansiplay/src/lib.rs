@@ -30,12 +30,26 @@ pub struct NoteInfo {
     pub dots: usize,
 }
 
+pub enum Variation {
+    Value(f32),
+    Random,
+}
+
+impl Display for Variation {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            Variation::Value(value) => write!(f, "{}", value),
+            Variation::Random => write!(f, "*"),
+        }
+    }
+}
+
 pub struct SoundCodeInfo {
     pub frequency: Option<f32>,
     pub duration: Option<f32>,
     pub cycles: Option<usize>,
     pub delay: Option<usize>,
-    pub variation: Option<f32>,
+    pub variation: Option<Variation>,
 }
 
 pub enum MusicalNote {
@@ -123,7 +137,7 @@ impl fmt::Display for SoundCodeInfo {
             None => write!(f, ";")?,
         }
         match self.variation {
-            Some(value) => write!(f, ";{}", value),
+            Some(ref variation) => write!(f, ";{}", variation),
             None => Ok(()),
         }
     }
@@ -179,6 +193,15 @@ mod test {
     fn test_play() {
         let (_stream, stream_handle) = OutputStream::try_default().unwrap();
         let entities = entities_from_str("1991;0.25;2;50");
+        let mut player = crate::player::Player::default();
+        let sink = Sink::try_new(&stream_handle).expect("Failed to create sink");
+        player.play(entities, sink)
+    }
+
+    #[test]
+    fn test_play_2() {
+        let (_stream, stream_handle) = OutputStream::try_default().unwrap();
+        let entities = entities_from_str("100;2;10;5;*");
         let mut player = crate::player::Player::default();
         let sink = Sink::try_new(&stream_handle).expect("Failed to create sink");
         player.play(entities, sink)

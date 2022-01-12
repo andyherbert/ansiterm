@@ -1,7 +1,9 @@
 use crate::{
     Articulation, MusicalEntity, MusicalNote, MusicalOperation, NoteInfo, NoteSign, SoundCodeInfo,
+    Variation,
 };
 use basic_waves::{Source, SquareWave};
+use rand::prelude::*;
 use rodio::{OutputStreamHandle, Sink};
 use std::sync::mpsc::{channel, Receiver};
 use std::thread;
@@ -24,6 +26,7 @@ pub struct Player {
     octave: usize,
     articulation: Articulation,
     rx: Option<Receiver<Self>>,
+    rng: StdRng,
 }
 
 impl Default for Player {
@@ -34,6 +37,7 @@ impl Default for Player {
             octave: 4,
             articulation: Articulation::Normal,
             rx: None,
+            rng: StdRng::seed_from_u64(random()),
         }
     }
 }
@@ -46,6 +50,7 @@ impl Clone for Player {
             octave: self.octave,
             articulation: self.articulation.clone(),
             rx: None,
+            rng: self.rng.clone(),
         }
     }
 }
@@ -104,15 +109,18 @@ impl Player {
         thread::sleep(Duration::from_millis(pause_ms as u64));
     }
 
-    fn play_sound_code(&self, sound_code: SoundCodeInfo, sink: &Sink) {
+    fn play_sound_code(&mut self, sound_code: SoundCodeInfo, sink: &Sink) {
         if let (Some(mut frequency), Some(duration)) = (sound_code.frequency, sound_code.duration) {
             let play_ms = (duration / 18.2 * 1000.0).ceil() as usize;
             let pause_ms = sound_code.delay.unwrap_or(0);
             let cycles = sound_code.cycles.unwrap_or(1);
-            let variation = sound_code.variation.unwrap_or(0.0);
             for _ in 0..cycles {
                 self.play_frequency(frequency, play_ms, pause_ms, sink);
-                frequency += variation;
+                frequency += match sound_code.variation {
+                    Some(Variation::Value(value)) => value,
+                    Some(Variation::Random) => self.rng.gen_range(-9999.0..=9999.0),
+                    None => 0.0,
+                };
             }
         }
     }
