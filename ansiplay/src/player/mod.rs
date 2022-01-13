@@ -1,6 +1,5 @@
 use crate::{
-    Articulation, MusicalEntity, MusicalNote, MusicalOperation, NoteInfo, NoteSign, SoundCodeInfo,
-    Variation,
+    Articulation, MusicEntity, MusicOperation, Note, NoteInfo, NoteSign, SoundCodeInfo, Variation,
 };
 use basic_waves::{Source, SquareWave};
 use rand::prelude::*;
@@ -60,16 +59,16 @@ impl Player {
         Default::default()
     }
 
-    fn get_frequency(&self, note: MusicalNote, sign: NoteSign) -> f32 {
+    fn get_frequency(&self, note: Note, sign: NoteSign) -> f32 {
         let mut index = self.octave * 12;
         index += match note {
-            MusicalNote::A => 9,
-            MusicalNote::B => 11,
-            MusicalNote::C => 0,
-            MusicalNote::D => 2,
-            MusicalNote::E => 4,
-            MusicalNote::F => 5,
-            MusicalNote::G => 7,
+            Note::A => 9,
+            Note::B => 11,
+            Note::C => 0,
+            Note::D => 2,
+            Note::E => 4,
+            Note::F => 5,
+            Note::G => 7,
         };
         match sign {
             NoteSign::Sharp => FREQS[index + 1],
@@ -130,7 +129,7 @@ impl Player {
         thread::sleep(Duration::from_millis(pause_ms as u64));
     }
 
-    fn play_note(&self, note: MusicalNote, info: NoteInfo, sink: &Sink) {
+    fn play_note(&self, note: Note, info: NoteInfo, sink: &Sink) {
         let (play_ms, pause_ms) = self.calculate_length(info.length, info.dots);
         let frequency = self.get_frequency(note, info.sign);
         self.play_frequency(frequency, play_ms, pause_ms, sink);
@@ -142,29 +141,29 @@ impl Player {
         self.play_frequency(frequency, play_ms, pause_ms, sink);
     }
 
-    pub fn play(&mut self, entities: Vec<MusicalEntity>, sink: Sink) {
+    pub fn play(&mut self, entities: Vec<MusicEntity>, sink: Sink) {
         for entity in entities {
             match entity {
-                MusicalEntity::Operation(MusicalOperation::Articulation(articulation)) => {
+                MusicEntity::Operation(MusicOperation::Articulation(articulation)) => {
                     self.articulation = articulation
                 }
-                MusicalEntity::Operation(_operation) => {}
-                MusicalEntity::Tempo(value) => self.tempo = value,
-                MusicalEntity::Octave(value) => self.octave = value,
-                MusicalEntity::Length(value) => self.length = value,
-                MusicalEntity::RawNote(value) => self.play_raw_note(value, &sink),
-                MusicalEntity::Pause(value) => self.pause(value),
-                MusicalEntity::IncreaseOctave => self.octave += 1,
-                MusicalEntity::DecreaseOctave => self.octave -= 1,
-                MusicalEntity::Note(note, info) => self.play_note(note, info, &sink),
-                MusicalEntity::SoundCode(info) => self.play_sound_code(info, &sink),
+                MusicEntity::Operation(_operation) => {}
+                MusicEntity::Tempo(value) => self.tempo = value,
+                MusicEntity::Octave(value) => self.octave = value,
+                MusicEntity::Length(value) => self.length = value,
+                MusicEntity::RawNote(value) => self.play_raw_note(value, &sink),
+                MusicEntity::Pause(value) => self.pause(value),
+                MusicEntity::IncreaseOctave => self.octave += 1,
+                MusicEntity::DecreaseOctave => self.octave -= 1,
+                MusicEntity::Note(note, info) => self.play_note(note, info, &sink),
+                MusicEntity::SoundCode(info) => self.play_sound_code(info, &sink),
             }
         }
     }
 
     pub fn spawn_and_play(
         &mut self,
-        entities: Vec<MusicalEntity>,
+        entities: Vec<MusicEntity>,
         stream_handle: &OutputStreamHandle,
     ) {
         let (tx, rx) = channel();

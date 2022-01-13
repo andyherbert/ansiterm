@@ -1,6 +1,6 @@
-mod musical_sequence_iterator;
+mod music_sequence_iterator;
 pub mod player;
-pub use musical_sequence_iterator::{IntoMusicalSequenceIter, MusicalSequenceIterator};
+pub use music_sequence_iterator::{IntoMusicSequenceIter, MusicSequenceIterator};
 use std::fmt::{self, Display, Formatter};
 
 #[derive(Clone)]
@@ -11,7 +11,7 @@ pub enum Articulation {
 }
 
 #[derive(Clone)]
-pub enum MusicalOperation {
+pub enum MusicOperation {
     None,
     Foreground,
     Background,
@@ -52,7 +52,7 @@ pub struct SoundCodeInfo {
     pub variation: Option<Variation>,
 }
 
-pub enum MusicalNote {
+pub enum Note {
     A,
     B,
     C,
@@ -62,8 +62,8 @@ pub enum MusicalNote {
     G,
 }
 
-pub enum MusicalEntity {
-    Operation(MusicalOperation),
+pub enum MusicEntity {
+    Operation(MusicOperation),
     Tempo(usize),
     Octave(usize),
     Length(usize),
@@ -71,7 +71,7 @@ pub enum MusicalEntity {
     Pause(usize),
     IncreaseOctave,
     DecreaseOctave,
-    Note(MusicalNote, NoteInfo),
+    Note(Note, NoteInfo),
     SoundCode(SoundCodeInfo),
 }
 
@@ -85,13 +85,13 @@ impl Display for Articulation {
     }
 }
 
-impl Display for MusicalOperation {
+impl Display for MusicOperation {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
-            MusicalOperation::None => write!(f, "M"),
-            MusicalOperation::Foreground => write!(f, "MF"),
-            MusicalOperation::Background => write!(f, "MB"),
-            MusicalOperation::Articulation(articulation) => articulation.fmt(f),
+            MusicOperation::None => write!(f, "M"),
+            MusicOperation::Foreground => write!(f, "MF"),
+            MusicOperation::Background => write!(f, "MB"),
+            MusicOperation::Articulation(articulation) => articulation.fmt(f),
         }
     }
 }
@@ -143,45 +143,45 @@ impl fmt::Display for SoundCodeInfo {
     }
 }
 
-impl Display for MusicalNote {
+impl Display for Note {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
-            MusicalNote::A => write!(f, "A"),
-            MusicalNote::B => write!(f, "B"),
-            MusicalNote::C => write!(f, "C"),
-            MusicalNote::D => write!(f, "D"),
-            MusicalNote::E => write!(f, "E"),
-            MusicalNote::F => write!(f, "F"),
-            MusicalNote::G => write!(f, "G"),
+            Note::A => write!(f, "A"),
+            Note::B => write!(f, "B"),
+            Note::C => write!(f, "C"),
+            Note::D => write!(f, "D"),
+            Note::E => write!(f, "E"),
+            Note::F => write!(f, "F"),
+            Note::G => write!(f, "G"),
         }
     }
 }
 
-impl Display for MusicalEntity {
+impl Display for MusicEntity {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
-            MusicalEntity::Operation(operation) => operation.fmt(f),
-            MusicalEntity::Tempo(value) => write!(f, "T{}", value),
-            MusicalEntity::Octave(value) => write!(f, "O{}", value),
-            MusicalEntity::Length(value) => write!(f, "L{}", value),
-            MusicalEntity::RawNote(value) => write!(f, "N{}", value),
-            MusicalEntity::Pause(length) => write!(f, "P{}", length),
-            MusicalEntity::IncreaseOctave => write!(f, ">"),
-            MusicalEntity::DecreaseOctave => write!(f, "<"),
-            MusicalEntity::Note(note, info) => write!(f, "{}{}", note, info),
-            MusicalEntity::SoundCode(info) => info.fmt(f),
+            MusicEntity::Operation(operation) => operation.fmt(f),
+            MusicEntity::Tempo(value) => write!(f, "T{}", value),
+            MusicEntity::Octave(value) => write!(f, "O{}", value),
+            MusicEntity::Length(value) => write!(f, "L{}", value),
+            MusicEntity::RawNote(value) => write!(f, "N{}", value),
+            MusicEntity::Pause(length) => write!(f, "P{}", length),
+            MusicEntity::IncreaseOctave => write!(f, ">"),
+            MusicEntity::DecreaseOctave => write!(f, "<"),
+            MusicEntity::Note(note, info) => write!(f, "{}{}", note, info),
+            MusicEntity::SoundCode(info) => info.fmt(f),
         }
     }
 }
 
-pub fn entities_from_str(string: &str) -> Vec<MusicalEntity> {
+pub fn entities_from_str(string: &str) -> Vec<MusicEntity> {
     format!("\x1b[M {}\x0e", string)
         .chars()
         .map(|char| char as u8)
         .collect::<Vec<u8>>()
         .as_slice()
         .into_musical_sequence_iter()
-        .collect::<Vec<MusicalEntity>>()
+        .collect::<Vec<MusicEntity>>()
 }
 
 #[cfg(test)]
