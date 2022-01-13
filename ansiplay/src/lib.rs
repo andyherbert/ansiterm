@@ -206,4 +206,13 @@ mod test {
         let sink = Sink::try_new(&stream_handle).expect("Failed to create sink");
         player.play(entities, sink)
     }
+
+    #[test]
+    fn test_play_3() {
+        let (_stream, stream_handle) = OutputStream::try_default().unwrap();
+        let entities = entities_from_str("ABC M ");
+        let mut player = crate::player::Player::default();
+        let sink = Sink::try_new(&stream_handle).expect("Failed to create sink");
+        player.play(entities, sink)
+    }
 }

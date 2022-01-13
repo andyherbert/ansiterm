@@ -15,8 +15,7 @@ impl<'a> Iterator for NumberSequenceIterator<'a> {
 
     fn next(&mut self) -> Option<Self::Item> {
         let mut current_number = ParsedNumber::None;
-        while self.position < self.bytes.len() {
-            let byte = self.bytes[self.position];
+        while let Some(byte) = self.bytes.get(self.position) {
             self.position += 1;
             current_number = match byte {
                 // '0'..='9'

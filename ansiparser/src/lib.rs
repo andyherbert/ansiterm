@@ -77,10 +77,7 @@ impl Iterator for Parser {
 
     fn next(&mut self) -> Option<Self::Item> {
         loop {
-            if self.position == self.bytes.len() {
-                return None;
-            } else {
-                let byte = self.bytes[self.position];
+            if let Some(byte) = self.bytes.get(self.position) {
                 self.position += 1;
                 match self.state {
                     State::Literal => match byte {
@@ -94,14 +91,14 @@ impl Iterator for Parser {
                         0x1a => self.state = State::EndOfFile(self.position),
                         // Esc
                         0x1b => self.state = State::Escape,
-                        _ => return Some(Sequence::Literal(byte)),
+                        _ => return Some(Sequence::Literal(*byte)),
                     },
                     State::Escape => match byte {
                         // '['
                         0x5b => self.state = State::Sequence(self.position),
                         _ => {
                             self.state = State::Literal;
-                            return Some(Sequence::Literal(byte));
+                            return Some(Sequence::Literal(*byte));
                         }
                     },
                     State::Sequence(start) => match byte {
@@ -238,7 +235,7 @@ impl Iterator for Parser {
                             self.state = State::Literal;
                             return Some(Sequence::Unknown(
                                 self.bytes[start..self.position - 1].to_vec(),
-                                byte,
+                                *byte,
                             ));
                         }
                         _ => {}
@@ -277,7 +274,7 @@ impl Iterator for Parser {
                         }
                     }
                     State::Music(start) => {
-                        if byte == 0x0e {
+                        if *byte == 0x0e {
                             self.state = State::Literal;
                             return Some(Sequence::Music(
                                 self.bytes[start..self.position - 1]
@@ -290,6 +287,8 @@ impl Iterator for Parser {
                 if self.position % (self.baud_rate as f32 / 8.0 / 60.0) as usize == 0 {
                     return Some(Sequence::Update);
                 }
+            } else {
+                return None;
             }
         }
     }

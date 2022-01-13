@@ -11,8 +11,7 @@ pub struct MusicalSequenceIterator<'a> {
 impl MusicalSequenceIterator<'_> {
     fn parse_dots(&mut self) -> usize {
         let mut amount = 0;
-        while self.position < self.bytes.len() {
-            let byte = self.bytes[self.position];
+        while let Some(byte) = self.bytes.get(self.position) {
             self.position += 1;
             match byte {
                 // ','
@@ -29,37 +28,39 @@ impl MusicalSequenceIterator<'_> {
     }
 
     fn parse_operation(&mut self) -> Option<MusicalOperation> {
-        let byte = self.bytes[self.position];
-        self.position += 1;
-        match byte {
-            // 'B'
-            0x42 => Some(MusicalOperation::Background),
-            // 'F'
-            0x46 => Some(MusicalOperation::Foreground),
-            // 'L' | 'l'
-            0x4c | 0x6d => Some(MusicalOperation::Articulation(Articulation::Legato)),
-            // 'N' | 'n'
-            0x4e | 0x6e => Some(MusicalOperation::Articulation(Articulation::Normal)),
-            // 'S' | 's'
-            0x53 | 0x73 => Some(MusicalOperation::Articulation(Articulation::Stacato)),
-            // ' '
-            0x20 => Some(MusicalOperation::None),
-            _ => None,
+        if let Some(byte) = self.bytes.get(self.position) {
+            self.position += 1;
+            match byte {
+                // 'B'
+                0x42 => Some(MusicalOperation::Background),
+                // 'F'
+                0x46 => Some(MusicalOperation::Foreground),
+                // 'L' | 'l'
+                0x4c | 0x6d => Some(MusicalOperation::Articulation(Articulation::Legato)),
+                // 'N' | 'n'
+                0x4e | 0x6e => Some(MusicalOperation::Articulation(Articulation::Normal)),
+                // 'S' | 's'
+                0x53 | 0x73 => Some(MusicalOperation::Articulation(Articulation::Stacato)),
+                // ' '
+                0x20 => Some(MusicalOperation::None),
+                _ => None,
+            }
+        } else {
+            None
         }
     }
 
     fn parse_int(&mut self, accept_whitespace: bool, accept_semi_colon: bool) -> Option<usize> {
         let mut number = None;
-        while self.position < self.bytes.len() {
-            let byte = self.bytes[self.position];
+        while let Some(byte) = self.bytes.get(self.position) {
             self.position += 1;
             match byte {
                 // '0'..='9'
                 0x30..=0x39 => {
                     if let Some(value) = &mut number {
-                        *value = (*value * 10) + (byte as usize - 0x30);
+                        *value = (*value * 10) + (*byte as usize - 0x30);
                     } else {
-                        number = Some(byte as usize - 0x30);
+                        number = Some(*byte as usize - 0x30);
                     }
                 }
                 // ';'
@@ -77,12 +78,11 @@ impl MusicalSequenceIterator<'_> {
 
     fn parse_sound_code_number(&mut self, accept_whitespace: bool) -> Option<f32> {
         let mut float = String::new();
-        while self.position < self.bytes.len() {
-            let byte = self.bytes[self.position];
+        while let Some(byte) = self.bytes.get(self.position) {
             self.position += 1;
             match byte {
                 // '0'..='9' | '-' | '.'
-                0x30..=0x39 | 0x2d | 0x2e => float.push(byte as char),
+                0x30..=0x39 | 0x2d | 0x2e => float.push(*byte as char),
                 // ';'
                 0x3b if float.is_empty() => return None,
                 0x3b if !float.is_empty() => break,
@@ -114,10 +114,7 @@ impl MusicalSequenceIterator<'_> {
     }
 
     fn parse_sign(&mut self) -> NoteSign {
-        if self.position == self.bytes.len() {
-            NoteSign::Natural
-        } else {
-            let byte = self.bytes[self.position];
+        if let Some(byte) = self.bytes.get(self.position) {
             self.position += 1;
             match byte {
                 // '+' | '#'
@@ -129,6 +126,8 @@ impl MusicalSequenceIterator<'_> {
                     NoteSign::Natural
                 }
             }
+        } else {
+            NoteSign::Natural
         }
     }
 
@@ -160,8 +159,7 @@ impl<'a> Iterator for MusicalSequenceIterator<'a> {
     type Item = MusicalEntity;
 
     fn next(&mut self) -> Option<Self::Item> {
-        while self.position < self.bytes.len() {
-            let byte = self.bytes[self.position];
+        while let Some(byte) = self.bytes.get(self.position) {
             self.position += 1;
             match byte {
                 // '-' | '.' | '0'..='9' | ';'
