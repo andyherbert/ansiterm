@@ -1,3 +1,5 @@
+use super::super::Rgba;
+
 pub trait GetAndPutRgba {
     fn get_rgba<F: FnMut(&mut [u8])>(
         &mut self,
@@ -16,10 +18,10 @@ pub trait GetAndPutRgba {
         width: usize,
         height: usize,
         total_width: usize,
-        rgba: &[[u8; 4]],
+        rgba: &[Rgba],
     );
 
-    fn fill_with_rgba(&mut self, rgba: &[u8; 4]);
+    fn fill_with_rgba(&mut self, rgba: &Rgba);
 }
 
 impl GetAndPutRgba for [u8] {
@@ -48,7 +50,7 @@ impl GetAndPutRgba for [u8] {
         width: usize,
         height: usize,
         total_width: usize,
-        rgba: &[[u8; 4]],
+        rgba: &[Rgba],
     ) {
         let mut iter = rgba.iter();
         self.get_rgba(x, y, width, height, total_width, |dest| {
@@ -58,7 +60,7 @@ impl GetAndPutRgba for [u8] {
         });
     }
 
-    fn fill_with_rgba(&mut self, src: &[u8; 4]) {
+    fn fill_with_rgba(&mut self, src: &Rgba) {
         for dest in self.chunks_exact_mut(4) {
             dest.copy_from_slice(src);
         }

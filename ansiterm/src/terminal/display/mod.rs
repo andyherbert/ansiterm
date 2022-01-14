@@ -1,12 +1,15 @@
 mod buffer;
 mod get_and_put_pixels;
-mod palette;
-use super::Blink;
-use super::Cursor;
+use super::{Blink, Cursor};
 use buffer::Buffer;
 use codepage::Font;
+use ega_palette::{EgaPalette, Rgba};
 use get_and_put_pixels::GetAndPutRgba;
-pub use palette::EGA_PALETTE;
+
+pub enum Colour {
+    Indexed(usize),
+    Rgba(Rgba),
+}
 
 pub struct TerminalDisplay {
     font: Font,
@@ -15,10 +18,11 @@ pub struct TerminalDisplay {
     blink_on: Buffer,
     blink_off: Buffer,
     blink: Blink,
+    palette: EgaPalette,
 }
 
 impl TerminalDisplay {
-    pub fn new(columns: usize, rows: usize) -> Self {
+    pub fn new(columns: usize, rows: usize, palette: EgaPalette) -> Self {
         let font = Font::default();
         let width = columns * font.width;
         let height = rows * font.height;
@@ -29,6 +33,7 @@ impl TerminalDisplay {
             blink_on: Buffer::new(width, height),
             blink_off: Buffer::new(width, height),
             blink: Blink::new(12),
+            palette,
         }
     }
 
@@ -72,19 +77,27 @@ impl TerminalDisplay {
         byte: u8,
         column: usize,
         row: usize,
-        fg_rgba: &[u8; 4],
-        bg_rgba: &[u8; 4],
+        fg: Colour,
+        bg: Colour,
         blink: bool,
     ) {
         let x = column * self.font.width;
         let y = row * self.font.height;
-        let rgba = self.font.to_vec(byte, fg_rgba, bg_rgba);
+        let fg = match fg {
+            Colour::Indexed(index) => self.palette[index].rgba,
+            Colour::Rgba(rgba) => rgba,
+        };
+        let bg = match bg {
+            Colour::Indexed(index) => self.palette[index].rgba,
+            Colour::Rgba(rgba) => rgba,
+        };
+        let rgba = self.font.to_vec(byte, &fg, &bg);
         self.blink_on
             .frame
             .put_rgba(x, y, self.font.width, self.font.height, self.width, &rgba);
         if blink {
             self.blink_off
-                .fill_rect(x, y, self.font.width, self.font.height, bg_rgba)
+                .fill_rect(x, y, self.font.width, self.font.height, &bg)
         } else {
             self.blink_off.frame.put_rgba(
                 x,

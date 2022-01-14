@@ -1,9 +1,11 @@
 mod blink;
 mod cursor;
 mod display;
+// mod palette;
 use blink::Blink;
 use cursor::Cursor;
-use display::{TerminalDisplay, EGA_PALETTE};
+use display::{Colour, TerminalDisplay};
+use ega_palette::{EgaPalette, Rgba};
 
 pub struct Terminal {
     display: TerminalDisplay,
@@ -16,15 +18,15 @@ pub struct Terminal {
     bg: usize,
     blink: bool,
     bold: bool,
-    pablo_true_colour_bg: Option<[u8; 4]>,
-    pablo_true_colour_fg: Option<[u8; 4]>,
+    pablo_true_colour_bg: Option<Rgba>,
+    pablo_true_colour_fg: Option<Rgba>,
     ice_colours: bool,
 }
 
 impl Terminal {
     pub fn new(columns: usize, rows: usize, ice_colours: bool) -> Self {
         Self {
-            display: TerminalDisplay::new(columns, rows),
+            display: TerminalDisplay::new(columns, rows, EgaPalette::ansi()),
             cursor: Cursor::new(2),
             stored_cursor: None,
             columns,
@@ -133,14 +135,14 @@ impl Terminal {
             self.display.scroll_up();
             self.cursor.row -= 1;
         }
-        let fg = match &self.pablo_true_colour_fg {
-            Some(rgba) => rgba,
-            None if self.bold => &EGA_PALETTE[self.fg + 8],
-            None => &EGA_PALETTE[self.fg],
+        let fg = match self.pablo_true_colour_fg {
+            Some(rgba) => Colour::Rgba(rgba),
+            None if self.bold => Colour::Indexed(self.fg + 8),
+            None => Colour::Indexed(self.fg),
         };
-        let bg = match &self.pablo_true_colour_bg {
-            Some(rgba) => rgba,
-            None => &EGA_PALETTE[self.bg],
+        let bg = match self.pablo_true_colour_bg {
+            Some(rgba) => Colour::Rgba(rgba),
+            None => Colour::Indexed(self.bg),
         };
         self.display.draw_glyph(
             byte,

@@ -10,3 +10,4 @@ rodio = "0.14"
 ansiplay = { version = "^0.1", path = "../ansiplay" }
 ansiparser = { version = "^0.1", path = "../ansiparser" }
 codepage = { version = "^0.1", path = "../codepage" }
+ega_palette = { version = "0.1", path = "../ega_palette" }

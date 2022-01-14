@@ -6,4 +6,5 @@ members = [
     "ansiterm",
     "basic_waves",
     "codepage",
+    "ega_palette",
 ]

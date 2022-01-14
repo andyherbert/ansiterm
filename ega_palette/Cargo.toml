@@ -1,0 +1,13 @@
+[package]
+name = "ega_palette"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Represents EGA colors, a palette containing these colors, and methods of extracting RGB data from each color"
+repository = "https://github.com/andyherbert/ansiterm"
+categories = [
+    "encoding",
+    "graphics",
+]
+
+[dependencies]

@@ -1,4 +1,5 @@
 use super::CP437_F16;
+use ega_palette::Rgba;
 
 pub struct Font {
     pub bytes: Vec<u8>,
@@ -29,7 +30,7 @@ impl Font {
         }
     }
 
-    pub fn to_vec(&self, byte: u8, fg_rgba: &[u8; 4], bg_rgba: &[u8; 4]) -> Vec<[u8; 4]> {
+    pub fn to_vec(&self, byte: u8, fg_rgba: &Rgba, bg_rgba: &Rgba) -> Vec<Rgba> {
         let mut font_bytes = Vec::with_capacity(self.width * self.height * 4);
         let offset = byte as usize * self.height;
         for byte in &self.bytes[offset..offset + self.height] {

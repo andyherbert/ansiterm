@@ -1,5 +1,5 @@
-use super::palette::BLACK;
 use super::GetAndPutRgba;
+use ega_palette::{Rgba, BLACK_RGBA};
 
 pub struct Buffer {
     pub frame: Vec<u8>,
@@ -20,10 +20,10 @@ impl Buffer {
     }
 
     pub fn clear(&mut self) {
-        self.frame.fill_with_rgba(&BLACK);
+        self.frame.fill_with_rgba(&BLACK_RGBA);
     }
 
-    pub fn fill_rect(&mut self, x: usize, y: usize, width: usize, height: usize, src: &[u8; 4]) {
+    pub fn fill_rect(&mut self, x: usize, y: usize, width: usize, height: usize, src: &Rgba) {
         self.frame
             .get_rgba(x, y, width, height, self.width, |dest| {
                 dest.copy_from_slice(src);
@@ -31,7 +31,7 @@ impl Buffer {
     }
 
     pub fn clear_rect(&mut self, x: usize, y: usize, width: usize, height: usize) {
-        self.fill_rect(x, y, width, height, &BLACK);
+        self.fill_rect(x, y, width, height, &BLACK_RGBA);
     }
 
     pub fn scroll_up(&mut self, y: usize) {
