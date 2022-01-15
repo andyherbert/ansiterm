@@ -2,6 +2,8 @@ use rodio::source::Source;
 use std::f32::consts::PI;
 use std::time::Duration;
 
+/// An infinite source that produces a saw tooth wave.
+/// Has a definable sample rate and one channel.
 #[derive(Debug, Clone)]
 pub struct SawWave {
     freq: f32,
@@ -11,6 +13,7 @@ pub struct SawWave {
 }
 
 impl SawWave {
+    /// The frequency and sample rate of the saw tooth wave.
     #[inline]
     pub fn new(freq: f32, sample_rate: u32) -> SawWave {
         SawWave {
@@ -21,6 +24,7 @@ impl SawWave {
         }
     }
 
+    /// The frequency and sample rate of the reverse saw tooth wave.
     #[inline]
     pub fn reverse(freq: f32, sample_rate: u32) -> SawWave {
         SawWave {
@@ -33,6 +37,8 @@ impl SawWave {
 }
 
 impl Default for SawWave {
+    /// Defines a saw tooth wave of 440Hz (A above middle C)
+    /// with a sample rate of 48000.
     #[inline]
     fn default() -> Self {
         Self {

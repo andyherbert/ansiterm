@@ -2,6 +2,8 @@ use rodio::source::Source;
 use std::f32::consts::PI;
 use std::time::Duration;
 
+/// An infinite source that produces a triangle wave.
+/// Has a definable sample rate and one channel.
 #[derive(Debug, Clone)]
 pub struct TriangleWave {
     freq: f32,
@@ -10,6 +12,7 @@ pub struct TriangleWave {
 }
 
 impl TriangleWave {
+    /// The frequency and sample rate of the triangle wave.
     #[inline]
     pub fn new(freq: f32, sample_rate: u32) -> TriangleWave {
         TriangleWave {
@@ -21,6 +24,8 @@ impl TriangleWave {
 }
 
 impl Default for TriangleWave {
+    /// Defines a triangle wave of 440Hz (A above middle C)
+    /// with a sample rate of 48000.
     #[inline]
     fn default() -> Self {
         Self {
