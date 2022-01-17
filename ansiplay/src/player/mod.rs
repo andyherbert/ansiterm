@@ -1,12 +1,13 @@
-use crate::{
-    Articulation, MusicEntity, MusicOperation, Note, NoteInfo, NoteSign, SoundCodeInfo, Variation,
-};
+mod player_error;
+mod player_thread;
+use crate::music::*;
 use basic_waves::{Source, SquareWave};
+use player_error::PlayerError;
+pub use player_thread::PlayerThread;
+use player_thread::ThreadMessage;
 use rand::prelude::*;
-use rodio::{OutputStreamHandle, Sink};
-use std::sync::mpsc::{channel, Receiver};
-use std::thread;
-use std::time::Duration;
+use rodio::Sink;
+use std::{sync::mpsc, thread, time};
 
 const FREQS: [f32; 84] = [
     65.406, 69.296, 73.416, 77.782, 82.406, 87.308, 92.498, 97.998, 103.826, 110.0, 116.54, 123.47,
@@ -19,12 +20,14 @@ const FREQS: [f32; 84] = [
     7040.0, 7458.6, 7902.2,
 ];
 
+/// A struct which provides an interface to play [Music], or play music in a new thread.
+#[derive(Debug)]
 pub struct Player {
     tempo: usize,
     length: usize,
     octave: usize,
     articulation: Articulation,
-    rx: Option<Receiver<Self>>,
+    rx: Option<mpsc::Receiver<ThreadMessage>>,
     rng: StdRng,
 }
 
@@ -41,21 +44,9 @@ impl Default for Player {
     }
 }
 
-impl Clone for Player {
-    fn clone(&self) -> Self {
-        Self {
-            tempo: self.tempo,
-            length: self.length,
-            octave: self.octave,
-            articulation: self.articulation.clone(),
-            rx: None,
-            rng: self.rng.clone(),
-        }
-    }
-}
-
 impl Player {
-    pub fn new() -> Self {
+    /// Equivalent to [Player::default]
+    pub fn new() -> Player {
         Default::default()
     }
 
@@ -99,34 +90,70 @@ impl Player {
         )
     }
 
-    fn play_frequency(&self, frequency: f32, play_ms: usize, pause_ms: usize, sink: &Sink) {
-        let wave = SquareWave::new(frequency, 44800)
-            .amplify(0.1)
-            .take_duration(Duration::from_millis(play_ms as u64));
-        sink.append(wave);
-        sink.sleep_until_end();
-        thread::sleep(Duration::from_millis(pause_ms as u64));
+    fn play_pause(&self, pause_ms: usize, sink: &Sink) {
+        if pause_ms > 0 {
+            let source = SquareWave::new(0.0, 48000)
+                .take_duration(time::Duration::from_millis(pause_ms as u64))
+                .amplify(0.0);
+            sink.append(source);
+        }
     }
 
-    fn play_sound_code(&mut self, sound_code: SoundCodeInfo, sink: &Sink) {
-        if let (Some(mut frequency), Some(duration)) = (sound_code.frequency, sound_code.duration) {
+    fn play_frequency(&self, frequency: f32, play_ms: usize, pause_ms: usize, sink: &Sink) {
+        if play_ms > 0 {
+            let source = SquareWave::new(frequency, 48000)
+                .amplify(0.1)
+                .take_duration(time::Duration::from_millis(play_ms as u64));
+            sink.append(source);
+        }
+        self.play_pause(pause_ms, sink);
+    }
+
+    fn play_sound_code(&mut self, info: SoundCodeInfo, sink: &Sink) {
+        if let (Some(mut frequency), Some(duration)) = (info.frequency, info.duration) {
             let play_ms = (duration / 18.2 * 1000.0).ceil() as usize;
-            let pause_ms = sound_code.delay.unwrap_or(0);
-            let cycles = sound_code.cycles.unwrap_or(1);
-            for _ in 0..cycles {
+            let pause_ms = info.delay.unwrap_or(0);
+            let cycles = info.cycles.unwrap_or(1);
+            if cycles == 0 {
                 self.play_frequency(frequency, play_ms, pause_ms, sink);
-                frequency += match sound_code.variation {
-                    Some(Variation::Value(value)) => value,
-                    Some(Variation::Random) => self.rng.gen_range(-9999.0..=9999.0),
-                    None => 0.0,
-                };
+            } else {
+                for _ in 0..cycles {
+                    self.play_frequency(frequency, play_ms, 0, sink);
+                    frequency += match info.variation {
+                        Some(Variation::Value(value)) => value,
+                        Some(Variation::Random) => self.rng.gen_range(-512.0..=512.0),
+                        None => 0.0,
+                    };
+                }
+                self.play_pause(pause_ms, sink);
+            }
+        } else if let Some(delay) = info.delay {
+            let cycles = (delay as f32 / (1000.0 / 60.0)).floor() as usize;
+            let dur = time::Duration::from_millis(1000 / 60);
+            // Clear the channel, so any buffered messages are ignored.
+            if let Some(ref rx) = self.rx {
+                while let Ok(message) = rx.try_recv() {
+                    match message {
+                        ThreadMessage::Interrupt => continue,
+                        ThreadMessage::Abort => return,
+                    }
+                }
+            }
+            for _ in 0..cycles {
+                // Interrupt if a message is received.
+                if let Some(ref rx) = self.rx {
+                    if rx.try_recv().is_ok() {
+                        break;
+                    }
+                }
+                thread::sleep(dur);
             }
         }
     }
 
-    fn pause(&self, quarter_notes: usize) {
+    fn pause(&self, quarter_notes: usize, sink: &Sink) {
         let pause_ms = 60.0 * 1000.0 / self.tempo as f32 * 4.0 / quarter_notes as f32;
-        thread::sleep(Duration::from_millis(pause_ms as u64));
+        self.play_pause(pause_ms as usize, sink)
     }
 
     fn play_note(&self, note: Note, info: NoteInfo, sink: &Sink) {
@@ -141,48 +168,35 @@ impl Player {
         self.play_frequency(frequency, play_ms, pause_ms, sink);
     }
 
-    pub fn play(&mut self, entities: Vec<MusicEntity>, sink: Sink) {
-        for entity in entities {
+    /// Plays [Music] through the supplied [Sink] and blocks the current thread.
+    pub fn play(&mut self, music: Music, sink: Sink) {
+        for entity in music {
             match entity {
                 MusicEntity::Operation(MusicOperation::Articulation(articulation)) => {
-                    self.articulation = articulation
+                    self.articulation = articulation.clone();
                 }
                 MusicEntity::Operation(_operation) => {}
                 MusicEntity::Tempo(value) => self.tempo = value,
                 MusicEntity::Octave(value) => self.octave = value,
                 MusicEntity::Length(value) => self.length = value,
                 MusicEntity::RawNote(value) => self.play_raw_note(value, &sink),
-                MusicEntity::Pause(value) => self.pause(value),
+                MusicEntity::Pause(value) => self.pause(value, &sink),
                 MusicEntity::IncreaseOctave => self.octave += 1,
                 MusicEntity::DecreaseOctave => self.octave -= 1,
                 MusicEntity::Note(note, info) => self.play_note(note, info, &sink),
                 MusicEntity::SoundCode(info) => self.play_sound_code(info, &sink),
             }
         }
-    }
-
-    pub fn spawn_and_play(
-        &mut self,
-        entities: Vec<MusicEntity>,
-        stream_handle: &OutputStreamHandle,
-    ) {
-        let (tx, rx) = channel();
-        let mut player = self.clone();
-        let sink = Sink::try_new(stream_handle).expect("Failed to create sink");
-        thread::spawn(move || {
-            player.play(entities, sink);
-            tx.send(player).unwrap();
-        });
-        self.rx = Some(rx);
-    }
-
-    pub fn is_playing(&mut self) -> bool {
-        if let Some(rx) = &self.rx {
-            match rx.try_recv() {
-                Ok(player) => *self = player,
-                Err(_) => return true,
+        if let Some(ref rx) = self.rx {
+            let dur = time::Duration::from_millis(1000 / 60);
+            while !sink.empty() {
+                thread::sleep(dur);
+                if let Ok(ThreadMessage::Abort) = rx.try_recv() {
+                    break;
+                }
             }
+        } else {
+            sink.sleep_until_end();
         }
-        false
     }
 }

@@ -2,8 +2,14 @@
 name = "ansiplay"
 version = "0.1.0"
 edition = "2021"
+license = "MIT"
+description = "Methods for parsing and playing ANSi Music"
+repository = "https://github.com/andyherbert/ansiterm"
+categories = [
+    "multimedia::audio",
+]
 
 [dependencies]
 rodio = "0.14"
-basic_waves = {version = "0.1.0", path = "../basic_waves"}
+basic_waves = {version = "0.1", path = "../basic_waves"}
 rand = "0.8"

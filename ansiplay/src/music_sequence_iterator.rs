@@ -1,13 +1,16 @@
-use crate::{
-    Articulation, MusicEntity, MusicOperation, Note, NoteInfo, NoteSign, SoundCodeInfo, Variation,
-};
+use crate::music::*;
 
+/// A struct that implements [Iterator] that can be used to produce [Music].
 pub struct MusicSequenceIterator<'a> {
     bytes: &'a [u8],
     position: usize,
 }
 
-impl MusicSequenceIterator<'_> {
+impl<'a> MusicSequenceIterator<'a> {
+    fn new(bytes: &'a [u8]) -> MusicSequenceIterator {
+        MusicSequenceIterator { bytes, position: 0 }
+    }
+
     fn parse_dots(&mut self) -> usize {
         let mut amount = 0;
         while let Some(byte) = self.bytes.get(self.position) {
@@ -75,40 +78,68 @@ impl MusicSequenceIterator<'_> {
         number
     }
 
-    fn parse_sound_code_number(&mut self, accept_whitespace: bool) -> Option<f32> {
-        let mut float = String::new();
-        while let Some(byte) = self.bytes.get(self.position) {
-            self.position += 1;
-            match byte {
-                // '0'..='9' | '-' | '.'
-                0x30..=0x39 | 0x2d | 0x2e => float.push(*byte as char),
-                // ';'
-                0x3b if float.is_empty() => return None,
-                0x3b if !float.is_empty() => break,
-                // ' '
-                0x20 if accept_whitespace => {}
-                _ => {
-                    self.position -= 1;
-                    break;
-                }
+    fn parse_sound_code_number(&mut self) -> Option<f32> {
+        let minus = match self.bytes.get(self.position) {
+            // '-'
+            Some(0x2d) => {
+                self.position += 1;
+                true
             }
+            // ';'
+            Some(0x3b) => {
+                self.position += 1;
+                return None;
+            }
+            // ' '
+            Some(0x20) => return None,
+            _ => false,
+        };
+        // '0..9'
+        let prefix = self.parse_int(false, false).unwrap_or(0);
+        // '.'
+        let postfix = if let Some(0x2e) = self.bytes.get(self.position) {
+            self.position += 1;
+            let post_fix = self.parse_int(false, false).unwrap_or(0);
+            if post_fix == 0 {
+                0.0
+            } else {
+                let mut value = post_fix;
+                let mut mul: usize = 0;
+                while value > 0 {
+                    value /= 10;
+                    if mul == 0 {
+                        mul = 10;
+                    } else {
+                        mul *= 10;
+                    }
+                }
+                post_fix as f32 / mul as f32
+            }
+        } else {
+            0.0
+        };
+        match self.bytes.get(self.position) {
+            // ';'
+            Some(0x3b) => self.position += 1,
+            None | Some(0x20) => {}
+            Some(_) => return None,
         }
-        float.parse().ok()
+        let value = prefix as f32 + postfix as f32;
+        if minus {
+            Some(-value)
+        } else {
+            Some(value)
+        }
     }
 
-    fn parse_sound_code_number_or_wildcard(
-        &mut self,
-        accept_whitespace: bool,
-    ) -> Option<Variation> {
+    fn parse_sound_code_number_or_wildcard(&mut self) -> Option<Variation> {
         match self.bytes.get(self.position)? {
             // '*'
             0x2a => {
                 self.position += 1;
                 Some(Variation::Random)
             }
-            _ => Some(Variation::Value(
-                self.parse_sound_code_number(accept_whitespace)?,
-            )),
+            _ => Some(Variation::Value(self.parse_sound_code_number()?)),
         }
     }
 
@@ -139,11 +170,11 @@ impl MusicSequenceIterator<'_> {
     }
 
     fn parse_sound_code(&mut self) -> Option<SoundCodeInfo> {
-        let frequency = self.parse_sound_code_number(false);
-        let duration = self.parse_sound_code_number(false);
+        let frequency = self.parse_sound_code_number();
+        let duration = self.parse_sound_code_number();
         let cycles = self.parse_int(false, true);
         let delay = self.parse_int(false, true);
-        let variation = self.parse_sound_code_number_or_wildcard(false);
+        let variation = self.parse_sound_code_number_or_wildcard();
         Some(SoundCodeInfo {
             frequency,
             duration,
@@ -205,15 +236,105 @@ impl<'a> Iterator for MusicSequenceIterator<'a> {
     }
 }
 
+/// A Trait that returns a [MusicSequenceIterator].
 pub trait IntoMusicSequenceIter<'a> {
     fn into_musical_sequence_iter(self) -> MusicSequenceIterator<'a>;
 }
 
 impl<'a> IntoMusicSequenceIter<'a> for &'a [u8] {
     fn into_musical_sequence_iter(self) -> MusicSequenceIterator<'a> {
-        MusicSequenceIterator {
-            bytes: self,
-            position: 0,
-        }
+        MusicSequenceIterator::new(self)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::MusicSequenceIterator;
+    fn to_bytes(string: &str) -> Vec<u8> {
+        string.chars().map(|char| char as u8).collect::<Vec<u8>>()
+    }
+
+    fn test_number(string: &str) -> Option<f32> {
+        let bytes = to_bytes(string);
+        let mut mus = MusicSequenceIterator::new(&bytes);
+        mus.parse_sound_code_number()
+    }
+
+    #[test]
+    fn test_operation() {
+        assert_eq!(test_number(";"), None);
+        assert_eq!(test_number("a"), None);
+        assert_eq!(test_number("1").unwrap(), 1.0);
+        assert_eq!(test_number("100").unwrap(), 100.0);
+        assert_eq!(test_number("1.0").unwrap(), 1.0);
+        assert_eq!(test_number("1.12345").unwrap(), 1.12345);
+        assert_eq!(test_number("10.0").unwrap(), 10.0);
+        assert_eq!(test_number(".0").unwrap(), 0.0);
+        assert_eq!(test_number("0..9"), None);
+        assert_eq!(test_number("0.9.0"), None);
+        assert_eq!(test_number(".9").unwrap(), 0.9);
+        assert_eq!(test_number("0.").unwrap(), 0.0);
+        assert_eq!(test_number("9.").unwrap(), 9.0);
+        assert_eq!(test_number(".").unwrap(), 0.0);
+        assert_eq!(test_number("-a"), None);
+        assert_eq!(test_number("-1").unwrap(), -1.0);
+        assert_eq!(test_number("-100").unwrap(), -100.0);
+        assert_eq!(test_number("-1.0").unwrap(), -1.0);
+        assert_eq!(test_number("-10.0").unwrap(), -10.0);
+        assert_eq!(test_number("-.0").unwrap(), 0.0);
+        assert_eq!(test_number("-0..9"), None);
+        assert_eq!(test_number("-0.9.0"), None);
+        assert_eq!(test_number("-.9").unwrap(), -0.9);
+        assert_eq!(test_number("-0.").unwrap(), -0.0);
+        assert_eq!(test_number("-9.").unwrap(), -9.0);
+        assert_eq!(test_number("-.").unwrap(), 0.0);
+        assert_eq!(test_number("a;"), None);
+        assert_eq!(test_number("1;").unwrap(), 1.0);
+        assert_eq!(test_number("100;").unwrap(), 100.0);
+        assert_eq!(test_number("1.0;").unwrap(), 1.0);
+        assert_eq!(test_number("10.0;").unwrap(), 10.0);
+        assert_eq!(test_number(".0;").unwrap(), 0.0);
+        assert_eq!(test_number("0..9;"), None);
+        assert_eq!(test_number("0.9.0;"), None);
+        assert_eq!(test_number(".9;").unwrap(), 0.9);
+        assert_eq!(test_number("0.;").unwrap(), 0.0);
+        assert_eq!(test_number("9.;").unwrap(), 9.0);
+        assert_eq!(test_number(".;").unwrap(), 0.0);
+        assert_eq!(test_number("-a;"), None);
+        assert_eq!(test_number("-1;").unwrap(), -1.0);
+        assert_eq!(test_number("-100;").unwrap(), -100.0);
+        assert_eq!(test_number("-1.0;").unwrap(), -1.0);
+        assert_eq!(test_number("-10.0;").unwrap(), -10.0);
+        assert_eq!(test_number("-.0;").unwrap(), 0.0);
+        assert_eq!(test_number("-0..9;"), None);
+        assert_eq!(test_number("-0.9.0;"), None);
+        assert_eq!(test_number("-.9;").unwrap(), -0.9);
+        assert_eq!(test_number("-0.;").unwrap(), -0.0);
+        assert_eq!(test_number("-9.;").unwrap(), -9.0);
+        assert_eq!(test_number("-.;").unwrap(), 0.0);
+        assert_eq!(test_number("a "), None);
+        assert_eq!(test_number("1 ").unwrap(), 1.0);
+        assert_eq!(test_number("100 ").unwrap(), 100.0);
+        assert_eq!(test_number("1.0 ").unwrap(), 1.0);
+        assert_eq!(test_number("10.0 ").unwrap(), 10.0);
+        assert_eq!(test_number(".0 ").unwrap(), 0.0);
+        assert_eq!(test_number("0..9 "), None);
+        assert_eq!(test_number("0.9.0 "), None);
+        assert_eq!(test_number(".9 ").unwrap(), 0.9);
+        assert_eq!(test_number("0. ").unwrap(), 0.0);
+        assert_eq!(test_number("9. ").unwrap(), 9.0);
+        assert_eq!(test_number(". ").unwrap(), 0.0);
+        assert_eq!(test_number("-a "), None);
+        assert_eq!(test_number("-1 ").unwrap(), -1.0);
+        assert_eq!(test_number("-100 ").unwrap(), -100.0);
+        assert_eq!(test_number("-1.0 ").unwrap(), -1.0);
+        assert_eq!(test_number("-10.0 ").unwrap(), -10.0);
+        assert_eq!(test_number("-.0 ").unwrap(), 0.0);
+        assert_eq!(test_number("-0..9 "), None);
+        assert_eq!(test_number("-0.9.0 "), None);
+        assert_eq!(test_number("-.9 ").unwrap(), -0.9);
+        assert_eq!(test_number("-0. ").unwrap(), -0.0);
+        assert_eq!(test_number("-9. ").unwrap(), -9.0);
+        assert_eq!(test_number("-. ").unwrap(), 0.0);
     }
 }

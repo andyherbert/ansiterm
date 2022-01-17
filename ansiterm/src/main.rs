@@ -1,7 +1,7 @@
 mod stdin;
 mod terminal;
 use ansiparser::{Parser, Sequence};
-use ansiplay::player::Player;
+use ansiplay::{Player, PlayerThread};
 use pixels::{Pixels, SurfaceTexture};
 use rodio::OutputStream;
 use stdin::spawn_stdin_channel;
@@ -21,7 +21,7 @@ struct Modifiers {
 }
 
 fn main() {
-    let (_stream, stream_handle) = OutputStream::try_default().unwrap();
+    let (_, stream) = OutputStream::try_default().unwrap();
     let mut term = Terminal::new(80, 25, false);
     let (width, height) = term.get_dimensions();
     let stdin = spawn_stdin_channel();
@@ -51,7 +51,8 @@ fn main() {
         shift: false,
     };
     let mut parser = Parser::default();
-    let mut player = Player::new();
+    let mut player = Some(Player::new());
+    let mut spawned_player: Option<PlayerThread> = None;
     event_loop.run(move |event, _window, control_flow| {
         match event {
             Event::WindowEvent {
@@ -89,7 +90,16 @@ fn main() {
                 #[cfg(target_os = "linux")]
                 #[cfg(target_os = "windows")]
                 VirtualKeyCode::F4 if modifiers.alt => *control_flow = ControlFlow::Exit,
-                _ => {}
+                VirtualKeyCode::Escape => {
+                    if let Some(ref player) = spawned_player {
+                        player.abort().expect("thread error");
+                    }
+                }
+                _ => {
+                    if let Some(ref player) = spawned_player {
+                        player.interrupt().expect("thread error");
+                    }
+                }
             },
             Event::RedrawRequested(_) => {
                 term.next_frame(pixels.get_frame());
@@ -100,7 +110,13 @@ fn main() {
         if let Ok(bytes) = stdin.try_recv() {
             parser.input(bytes);
         }
-        if player.is_playing() {
+        if let Some(ref thread) = spawned_player {
+            if thread.finished_playing().expect("Thread Error") {
+                match spawned_player.take() {
+                    Some(thread) => player = Some(thread.join().expect("thread error")),
+                    None => unreachable!("Thread error"),
+                }
+            }
             window.request_redraw();
         } else if let Some(sequence) = parser.next() {
             match sequence {
@@ -129,11 +145,14 @@ fn main() {
                 Sequence::SauceComment(_bytes) => {}
                 Sequence::PabloTrueColourBackground(r, g, b) => term.true_colour_bg(r, g, b),
                 Sequence::PabloTrueColourForeground(r, g, b) => term.true_colour_fg(r, g, b),
-                Sequence::Music(entities) => player.spawn_and_play(entities, &stream_handle),
-                Sequence::Update => window.request_redraw(),
-                Sequence::Unknown(vec, terminator) => {
-                    println!("{:?}, {}", vec, terminator);
+                Sequence::Music(music) => {
+                    if let Some(player) = player.take() {
+                        spawned_player =
+                            Some(PlayerThread::new(player, &stream, music).expect("Thread Erro"));
+                    }
                 }
+                Sequence::Update => window.request_redraw(),
+                Sequence::Unknown(vec, terminator) => println!("{:?}, {}", vec, terminator),
             }
         } else {
             window.request_redraw();

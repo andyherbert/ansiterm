@@ -1,5 +1,5 @@
 mod sequence_iterator;
-use ansiplay::{IntoMusicSequenceIter, MusicEntity};
+use ansiplay::Music;
 use sequence_iterator::IntoNumberSequenceIter;
 
 const SAUCE_HEADER: [u8; 7] = [0x53, 0x41, 0x55, 0x43, 0x45, 0x30, 0x30];
@@ -36,7 +36,7 @@ pub enum Sequence {
     SauceComment(Vec<u8>),
     PabloTrueColourBackground(u8, u8, u8),
     PabloTrueColourForeground(u8, u8, u8),
-    Music(Vec<MusicEntity>),
+    Music(Music),
     Unknown(Vec<u8>, u8),
     Update,
 }
@@ -276,11 +276,8 @@ impl Iterator for Parser {
                     State::Music(start) => {
                         if *byte == 0x0e {
                             self.state = State::Literal;
-                            return Some(Sequence::Music(
-                                self.bytes[start..self.position - 1]
-                                    .into_musical_sequence_iter()
-                                    .collect(),
-                            ));
+                            let music = Music::new(&self.bytes[start..self.position - 1]);
+                            return Some(Sequence::Music(music));
                         }
                     }
                 }
