@@ -21,7 +21,7 @@ struct Modifiers {
 }
 
 fn main() {
-    let (_, stream) = OutputStream::try_default().unwrap();
+    let (_out, stream) = OutputStream::try_default().unwrap();
     let mut term = Terminal::new(80, 25, false);
     let (width, height) = term.get_dimensions();
     let stdin = spawn_stdin_channel();
