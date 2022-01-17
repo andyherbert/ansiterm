@@ -11,3 +11,4 @@ ansiplay = { version = "^0.1", path = "../ansiplay" }
 ansiparser = { version = "^0.1", path = "../ansiparser" }
 codepage = { version = "^0.1", path = "../codepage" }
 ega_palette = { version = "0.1", path = "../ega_palette" }
+stdin_receiver = { version = "0.1", path = "../stdin_receiver" }

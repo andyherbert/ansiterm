@@ -7,4 +7,5 @@ members = [
     "basic_waves",
     "codepage",
     "ega_palette",
+    "stdin_receiver"
 ]

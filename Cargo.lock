@@ -61,6 +61,7 @@ dependencies = [
  "ega_palette",
  "pixels",
  "rodio",
+ "stdin_receiver",
  "winit",
 ]
 
@@ -1513,6 +1514,10 @@ dependencies = [
  "bitflags",
  "num-traits",
 ]
+
+[[package]]
+name = "stdin_receiver"
+version = "0.1.0"
 
 [[package]]
 name = "stdweb"

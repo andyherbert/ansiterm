@@ -1,10 +1,9 @@
-mod stdin;
 mod terminal;
 use ansiparser::{Parser, Sequence};
 use ansiplay::{Player, PlayerThread};
 use pixels::{Pixels, SurfaceTexture};
 use rodio::OutputStream;
-use stdin::spawn_stdin_channel;
+use stdin_receiver::StdInReceiver;
 use terminal::Terminal;
 pub use winit::event::VirtualKeyCode;
 use winit::{
@@ -24,7 +23,7 @@ fn main() {
     let (_out, stream) = OutputStream::try_default().unwrap();
     let mut term = Terminal::new(80, 25, false);
     let (width, height) = term.get_dimensions();
-    let stdin = spawn_stdin_channel();
+    let mut stdin = Some(StdInReceiver::default());
     let title = "ANSi Terminal";
     let event_loop = EventLoop::new();
     const SCALE: u32 = 2;
@@ -58,7 +57,14 @@ fn main() {
             Event::WindowEvent {
                 event: WindowEvent::CloseRequested,
                 ..
-            } => *control_flow = ControlFlow::Exit,
+            } => {
+                *control_flow = ControlFlow::Exit;
+                if let Some(stdin) = stdin.take() {
+                    if let Err(err) = stdin.join() {
+                        eprintln!("{err}");
+                    }
+                }
+            }
             Event::WindowEvent {
                 event: WindowEvent::ModifiersChanged(state),
                 ..
@@ -107,17 +113,30 @@ fn main() {
             }
             _ => {}
         }
-        if let Ok(bytes) = stdin.try_recv() {
-            parser.input(bytes);
+        if let Some(ref stdin) = stdin {
+            match stdin.recv() {
+                Ok(Some(bytes)) => parser.input(bytes),
+                Ok(None) => {}
+                Err(err) => eprintln!("{err}"),
+            }
         }
         if let Some(ref thread) = spawned_player {
-            if thread.finished_playing().expect("Thread Error") {
-                match spawned_player.take() {
-                    Some(thread) => player = Some(thread.join().expect("thread error")),
-                    None => unreachable!("Thread error"),
-                }
+            match thread.finished_playing() {
+                Ok(true) => match spawned_player.take() {
+                    Some(thread) => {
+                        player = match thread.join() {
+                            Ok(player) => Some(player),
+                            Err(err) => {
+                                eprintln!("{err}");
+                                None
+                            }
+                        }
+                    }
+                    None => unreachable!("Some(thread) already checked"),
+                },
+                Ok(false) => window.request_redraw(),
+                Err(err) => eprintln!("{err}"),
             }
-            window.request_redraw();
         } else if let Some(sequence) = parser.next() {
             match sequence {
                 Sequence::Literal(byte) => term.literal(byte),
@@ -147,8 +166,13 @@ fn main() {
                 Sequence::PabloTrueColourForeground(r, g, b) => term.true_colour_fg(r, g, b),
                 Sequence::Music(music) => {
                     if let Some(player) = player.take() {
-                        spawned_player =
-                            Some(PlayerThread::new(player, &stream, music).expect("Thread Erro"));
+                        spawned_player = match PlayerThread::new(player, &stream, music) {
+                            Ok(thread) => Some(thread),
+                            Err(err) => {
+                                eprintln!("{err}");
+                                None
+                            }
+                        }
                     }
                 }
                 Sequence::Update => window.request_redraw(),
