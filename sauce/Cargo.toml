@@ -1,0 +1,13 @@
+[package]
+name = "sauce"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+codepage437 = { version = "0.1", path = "../codepage437" }
+regex = "1.5"
+serde = { version = "1.0", features = ["derive"] }
+
+[dev-dependencies]
+serde_json = "1.0"
+csv =  "1.1"
