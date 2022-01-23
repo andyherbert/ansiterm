@@ -5,7 +5,8 @@ members = [
     "ansiplay",
     "ansiterm",
     "basic_waves",
-    "codepage",
+    "codepage437",
     "ega_palette",
+    "sauce",
     "stdin_receiver"
 ]
