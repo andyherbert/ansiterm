@@ -1,5 +1,7 @@
-use super::{Player, PlayerError};
-use crate::music::*;
+use crate::{
+    music::*,
+    player::{Player, PlayerError},
+};
 use rodio::{OutputStreamHandle, Sink};
 use std::sync::mpsc::{self, Receiver, Sender, TryRecvError};
 use std::thread::{self, JoinHandle};

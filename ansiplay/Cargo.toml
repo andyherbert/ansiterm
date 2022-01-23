@@ -12,4 +12,5 @@ categories = [
 [dependencies]
 rodio = "0.14"
 basic_waves = {version = "0.1", path = "../basic_waves"}
+codepage437 = {version = "0.1", path = "../codepage437"}
 rand = "0.8"

@@ -4,29 +4,29 @@ use std::fmt::{self, Display, Formatter};
 /// A representation of ANSI Music
 #[derive(Clone, Debug)]
 pub struct Music {
-    vec: Vec<MusicEntity>,
+    entities: Vec<MusicEntity>,
 }
 
 impl From<&str> for Music {
     fn from(string: &str) -> Self {
-        let vec = string
+        let entities = string
             .chars()
             .map(|char| char as u8)
             .collect::<Vec<u8>>()
             .as_slice()
             .into_musical_sequence_iter()
             .collect::<Vec<MusicEntity>>();
-        Music { vec }
+        Music { entities }
     }
 }
 
 impl Music {
     /// Constructs a new instance based on a struct that implements [IntoMusicSequenceIter]
     pub fn new<'a>(iter: impl IntoMusicSequenceIter<'a>) -> Music {
-        let vec = iter
+        let entities = iter
             .into_musical_sequence_iter()
             .collect::<Vec<MusicEntity>>();
-        Music { vec }
+        Music { entities }
     }
 }
 
@@ -35,14 +35,14 @@ impl IntoIterator for Music {
     type IntoIter = std::vec::IntoIter<MusicEntity>;
 
     fn into_iter(self) -> Self::IntoIter {
-        self.vec.into_iter()
+        self.entities.into_iter()
     }
 }
 
 impl Display for Music {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         let string = self
-            .vec
+            .entities
             .iter()
             .map(|entity| entity.to_string())
             .collect::<Vec<String>>()

@@ -1,4 +1,5 @@
 use crate::music::*;
+use codepage437::ascii;
 
 /// A struct that implements [Iterator] that can be used to produce [Music].
 pub struct MusicSequenceIterator<'a> {
@@ -15,11 +16,9 @@ impl<'a> MusicSequenceIterator<'a> {
         let mut amount = 0;
         while let Some(byte) = self.bytes.get(self.position) {
             self.position += 1;
-            match byte {
-                // ','
-                0x2e => amount += 1,
-                // ' '
-                0x20 => {}
+            match *byte {
+                ascii::COMMA => amount += 1,
+                ascii::SPACE => {}
                 _ => {
                     self.position -= 1;
                     break;
@@ -32,19 +31,19 @@ impl<'a> MusicSequenceIterator<'a> {
     fn parse_operation(&mut self) -> Option<MusicOperation> {
         if let Some(byte) = self.bytes.get(self.position) {
             self.position += 1;
-            match byte {
-                // 'B'
-                0x42 => Some(MusicOperation::Background),
-                // 'F'
-                0x46 => Some(MusicOperation::Foreground),
-                // 'L' | 'l'
-                0x4c | 0x6d => Some(MusicOperation::Articulation(Articulation::Legato)),
-                // 'N' | 'n'
-                0x4e | 0x6e => Some(MusicOperation::Articulation(Articulation::Normal)),
-                // 'S' | 's'
-                0x53 | 0x73 => Some(MusicOperation::Articulation(Articulation::Stacato)),
-                // ' '
-                0x20 => Some(MusicOperation::None),
+            match *byte {
+                ascii::UPPERCASE_B => Some(MusicOperation::Background),
+                ascii::UPPERCASE_F => Some(MusicOperation::Foreground),
+                ascii::UPPERCASE_L | ascii::LOWERCASE_L => {
+                    Some(MusicOperation::Articulation(Articulation::Legato))
+                }
+                ascii::UPPERCASE_N | ascii::LOWERCASE_N => {
+                    Some(MusicOperation::Articulation(Articulation::Normal))
+                }
+                ascii::UPPERCASE_S | ascii::LOWERCASE_S => {
+                    Some(MusicOperation::Articulation(Articulation::Stacato))
+                }
+                ascii::SPACE => Some(MusicOperation::None),
                 _ => None,
             }
         } else {
@@ -56,19 +55,16 @@ impl<'a> MusicSequenceIterator<'a> {
         let mut number = None;
         while let Some(byte) = self.bytes.get(self.position) {
             self.position += 1;
-            match byte {
-                // '0'..='9'
-                0x30..=0x39 => {
+            match *byte {
+                ascii::DIGIT_0..=ascii::DIGIT_9 => {
                     if let Some(value) = &mut number {
-                        *value = (*value * 10) + (*byte as usize - 0x30);
+                        *value = (*value * 10) + (*byte as usize - ascii::DIGIT_0 as usize);
                     } else {
-                        number = Some(*byte as usize - 0x30);
+                        number = Some(*byte as usize - ascii::DIGIT_0 as usize);
                     }
                 }
-                // ';'
-                0x3b if accept_semi_colon => break,
-                // ' '
-                0x20 if accept_whitespace => {}
+                ascii::SEMI_COLON if accept_semi_colon => break,
+                ascii::SPACE if accept_whitespace => {}
                 _ => {
                     self.position -= 1;
                     break;
@@ -79,25 +75,21 @@ impl<'a> MusicSequenceIterator<'a> {
     }
 
     fn parse_sound_code_number(&mut self) -> Option<f32> {
-        let minus = match self.bytes.get(self.position) {
-            // '-'
-            Some(0x2d) => {
+        let minus = match self.bytes.get(self.position).copied() {
+            Some(ascii::MINUS) => {
                 self.position += 1;
                 true
             }
-            // ';'
-            Some(0x3b) => {
+            Some(ascii::SEMI_COLON) => {
                 self.position += 1;
                 return None;
             }
-            // ' '
-            Some(0x20) => return None,
+            Some(ascii::SPACE) => return None,
             _ => false,
         };
         // '0..9'
         let prefix = self.parse_int(false, false).unwrap_or(0);
-        // '.'
-        let postfix = if let Some(0x2e) = self.bytes.get(self.position) {
+        let postfix = if let Some(ascii::PERIOD) = self.bytes.get(self.position).copied() {
             self.position += 1;
             let post_fix = self.parse_int(false, false).unwrap_or(0);
             if post_fix == 0 {
@@ -118,10 +110,9 @@ impl<'a> MusicSequenceIterator<'a> {
         } else {
             0.0
         };
-        match self.bytes.get(self.position) {
-            // ';'
-            Some(0x3b) => self.position += 1,
-            None | Some(0x20) => {}
+        match self.bytes.get(self.position).copied() {
+            Some(ascii::SEMI_COLON) => self.position += 1,
+            None | Some(ascii::SPACE) => {}
             Some(_) => return None,
         }
         let value = prefix as f32 + postfix as f32;
@@ -133,9 +124,8 @@ impl<'a> MusicSequenceIterator<'a> {
     }
 
     fn parse_sound_code_number_or_wildcard(&mut self) -> Option<Variation> {
-        match self.bytes.get(self.position)? {
-            // '*'
-            0x2a => {
+        match self.bytes.get(self.position).copied()? {
+            ascii::ASTERISK => {
                 self.position += 1;
                 Some(Variation::Random)
             }
@@ -144,13 +134,11 @@ impl<'a> MusicSequenceIterator<'a> {
     }
 
     fn parse_sign(&mut self) -> NoteSign {
-        if let Some(byte) = self.bytes.get(self.position) {
+        if let Some(byte) = self.bytes.get(self.position).copied() {
             self.position += 1;
             match byte {
-                // '+' | '#'
-                0x2b | 0x23 => NoteSign::Sharp,
-                // '-'
-                0x2d => NoteSign::Flat,
+                ascii::PLUS | ascii::NUMBER_SIGN => NoteSign::Sharp,
+                ascii::MINUS => NoteSign::Flat,
                 _ => {
                     self.position -= 1;
                     NoteSign::Natural
@@ -189,46 +177,58 @@ impl<'a> Iterator for MusicSequenceIterator<'a> {
     type Item = MusicEntity;
 
     fn next(&mut self) -> Option<Self::Item> {
-        while let Some(byte) = self.bytes.get(self.position) {
+        while let Some(byte) = self.bytes.get(self.position).copied() {
             self.position += 1;
             match byte {
-                // '-' | '.' | '0'..='9' | ';'
-                0x2d | 0x2e | 0x30..=0x39 | 0x3b => {
+                ascii::MINUS
+                | ascii::PERIOD
+                | ascii::DIGIT_0..=ascii::DIGIT_9
+                | ascii::SEMI_COLON => {
                     self.position -= 1;
                     return Some(MusicEntity::SoundCode(self.parse_sound_code()?));
                 }
-                // 'a' | 'A'
-                0x61 | 0x41 => return Some(MusicEntity::Note(Note::A, self.parse_note_info())),
-                // 'b' | 'B'
-                0x62 | 0x42 => return Some(MusicEntity::Note(Note::B, self.parse_note_info())),
-                // 'c' | 'C'
-                0x63 | 0x43 => return Some(MusicEntity::Note(Note::C, self.parse_note_info())),
-                // 'd' | 'd'
-                0x64 | 0x44 => return Some(MusicEntity::Note(Note::D, self.parse_note_info())),
-                // 'e' | 'E'
-                0x65 | 0x45 => return Some(MusicEntity::Note(Note::E, self.parse_note_info())),
-                // 'f' | 'F'
-                0x66 | 0x46 => return Some(MusicEntity::Note(Note::F, self.parse_note_info())),
-                // 'g' | 'G'
-                0x67 | 0x47 => return Some(MusicEntity::Note(Note::G, self.parse_note_info())),
-                // 'L' | 'l'
-                0x4c | 0x6c => return self.parse_int(true, false).map(MusicEntity::Length),
-                // 'M' | 'm'
-                0x4d | 0x6d => return self.parse_operation().map(MusicEntity::Operation),
-                // 'N' | 'n'
-                0x4e | 0x6e => return self.parse_int(true, false).map(MusicEntity::RawNote),
-                // 'O' | 'o'
-                0x4f | 0x6f => return self.parse_int(true, false).map(MusicEntity::Octave),
-                // 'P' | 'p'
-                0x50 | 0x70 => return Some(MusicEntity::Pause(self.parse_int(true, false)?)),
-                // 'T' | 't'
-                0x54 | 0x74 => return self.parse_int(true, false).map(MusicEntity::Tempo),
-                // '<'
-                0x3c => return Some(MusicEntity::DecreaseOctave),
-                // '>'
-                0x3e => return Some(MusicEntity::IncreaseOctave),
-                // ' '
-                0x20 => {}
+                ascii::UPPERCASE_A | ascii::LOWERCASE_A => {
+                    return Some(MusicEntity::Note(Note::A, self.parse_note_info()))
+                }
+                ascii::UPPERCASE_B | ascii::LOWERCASE_B => {
+                    return Some(MusicEntity::Note(Note::B, self.parse_note_info()))
+                }
+                ascii::UPPERCASE_C | ascii::LOWERCASE_C => {
+                    return Some(MusicEntity::Note(Note::C, self.parse_note_info()))
+                }
+                ascii::UPPERCASE_D | ascii::LOWERCASE_D => {
+                    return Some(MusicEntity::Note(Note::D, self.parse_note_info()))
+                }
+                ascii::UPPERCASE_E | ascii::LOWERCASE_E => {
+                    return Some(MusicEntity::Note(Note::E, self.parse_note_info()))
+                }
+                ascii::UPPERCASE_F | ascii::LOWERCASE_F => {
+                    return Some(MusicEntity::Note(Note::F, self.parse_note_info()))
+                }
+                ascii::UPPERCASE_G | ascii::LOWERCASE_G => {
+                    return Some(MusicEntity::Note(Note::G, self.parse_note_info()))
+                }
+                ascii::UPPERCASE_L | ascii::LOWERCASE_L => {
+                    return self.parse_int(true, false).map(MusicEntity::Length)
+                }
+                ascii::UPPERCASE_M | ascii::LOWERCASE_M => {
+                    return self.parse_operation().map(MusicEntity::Operation)
+                }
+                ascii::UPPERCASE_N | ascii::LOWERCASE_N => {
+                    return self.parse_int(true, false).map(MusicEntity::RawNote)
+                }
+                ascii::UPPERCASE_O | ascii::LOWERCASE_O => {
+                    return self.parse_int(true, false).map(MusicEntity::Octave)
+                }
+                ascii::UPPERCASE_P | ascii::LOWERCASE_P => {
+                    return Some(MusicEntity::Pause(self.parse_int(true, false)?))
+                }
+                ascii::UPPERCASE_T | ascii::LOWERCASE_T => {
+                    return self.parse_int(true, false).map(MusicEntity::Tempo)
+                }
+                ascii::LESS_THAN_SIGN => return Some(MusicEntity::DecreaseOctave),
+                ascii::GREATER_THAN_SIGN => return Some(MusicEntity::IncreaseOctave),
+                ascii::SPACE => {}
                 _ => {}
             }
         }
@@ -249,7 +249,7 @@ impl<'a> IntoMusicSequenceIter<'a> for &'a [u8] {
 
 #[cfg(test)]
 mod test {
-    use super::MusicSequenceIterator;
+    use crate::MusicSequenceIterator;
     fn to_bytes(string: &str) -> Vec<u8> {
         string.chars().map(|char| char as u8).collect::<Vec<u8>>()
     }
