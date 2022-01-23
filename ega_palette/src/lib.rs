@@ -15,6 +15,8 @@ pub static CGA_ORDER: [u8; 16] = [0, 1, 2, 3, 4, 5, 20, 7, 56, 57, 58, 59, 60, 6
 pub static ANSI_ORDER: [u8; 16] = [0, 4, 2, 20, 1, 5, 3, 7, 56, 60, 58, 62, 57, 61, 59, 63];
 /// RGBA values for black
 pub static BLACK_RGBA: Rgba = [0, 0, 0, 255];
+/// RGBA values for white
+pub static WHITE_RGBA: Rgba = [255, 255, 255, 255];
 
 // Coverts 6 bit binary representation to 8 bit RGB values
 // The binary representation is in the form "rgbRGB" where the lowercase letters are the low-intensity bits, and uppercase letters are high-intensity bits
