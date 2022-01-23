@@ -1,7 +1,0 @@
-[package]
-name = "codepage"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-ega_palette = { version = "0.1.0", path = "../ega_palette" }

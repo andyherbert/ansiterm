@@ -1,0 +1,19 @@
+[package]
+name = "codepage_437"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Tools for dealing with various bitmap fonts, specifically IBM Codepage 437"
+repository = "https://github.com/andyherbert/ansiterm"
+categories = [
+    "encoding",
+    "graphics",
+]
+
+[dependencies]
+ega_palette = { version = "0.1", path = "../ega_palette" }
+serde = { version = "1.0" }
+image = { version = "0.23" }
+
+[dev-dependencies]
+serde_json = "1.0"
