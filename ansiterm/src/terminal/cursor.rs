@@ -1,4 +1,4 @@
-use super::Blink;
+use crate::terminal::Blink;
 
 pub struct Cursor {
     pub column: usize,

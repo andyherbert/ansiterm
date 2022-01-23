@@ -160,8 +160,9 @@ fn main() {
                 Sequence::SelectGraphicsRendition(values) => term.select_graphics_rendition(values),
                 Sequence::SavePosition => term.save_cursor_position(),
                 Sequence::RestorePosition => term.restore_cursor_position(),
-                Sequence::SauceRecord(_bytes) => {}
-                Sequence::SauceComment(_bytes) => {}
+                Sequence::SauceRecord(sauce) => {
+                    println!("{sauce}");
+                }
                 Sequence::PabloTrueColourBackground(r, g, b) => term.true_colour_bg(r, g, b),
                 Sequence::PabloTrueColourForeground(r, g, b) => term.true_colour_fg(r, g, b),
                 Sequence::Music(music) => {

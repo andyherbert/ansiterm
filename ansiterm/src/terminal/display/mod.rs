@@ -1,8 +1,8 @@
 mod buffer;
 mod get_and_put_pixels;
-use super::{Blink, Cursor};
+use crate::terminal::{Blink, Cursor};
 use buffer::Buffer;
-use codepage::Font;
+use codepage437::{DrawFont, Font};
 use ega_palette::{EgaPalette, Rgba};
 use get_and_put_pixels::GetAndPutRgba;
 
@@ -40,9 +40,7 @@ impl TerminalDisplay {
     pub fn draw_cursor(&mut self, frame: &mut [u8], cursor: &Cursor) {
         let x = cursor.column * self.font.width;
         let y = cursor.row * self.font.height + (self.font.height - cursor.height);
-        frame.get_rgba(x, y, self.font.width, cursor.height, self.width, |pixel| {
-            pixel.copy_from_slice(&[255 - pixel[0], 255 - pixel[1], 255 - pixel[2], 255]);
-        });
+        frame.put_inverse(x, y, self.font.width, cursor.height, self.width);
     }
 
     pub fn next_frame(&mut self, frame: &mut [u8]) {
@@ -91,22 +89,17 @@ impl TerminalDisplay {
             Colour::Indexed(index) => self.palette[index].rgba,
             Colour::Rgba(rgba) => rgba,
         };
-        let rgba = self.font.to_vec(byte, &fg, &bg);
+        let font_rgba = self.font.to_bytes(byte, &fg, &bg);
         self.blink_on
             .frame
-            .put_rgba(x, y, self.font.width, self.font.height, self.width, &rgba);
+            .draw_font(x, y, self.font.width, self.width, &font_rgba);
         if blink {
             self.blink_off
                 .fill_rect(x, y, self.font.width, self.font.height, &bg)
         } else {
-            self.blink_off.frame.put_rgba(
-                x,
-                y,
-                self.font.width,
-                self.font.height,
-                self.width,
-                &rgba,
-            );
+            self.blink_off
+                .frame
+                .draw_font(x, y, self.font.width, self.width, &font_rgba);
         }
     }
 }

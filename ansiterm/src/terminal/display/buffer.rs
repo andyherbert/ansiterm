@@ -1,4 +1,4 @@
-use super::GetAndPutRgba;
+use crate::terminal::display::GetAndPutRgba;
 use ega_palette::{Rgba, BLACK_RGBA};
 
 pub struct Buffer {
@@ -23,11 +23,8 @@ impl Buffer {
         self.frame.fill_with_rgba(&BLACK_RGBA);
     }
 
-    pub fn fill_rect(&mut self, x: usize, y: usize, width: usize, height: usize, src: &Rgba) {
-        self.frame
-            .get_rgba(x, y, width, height, self.width, |dest| {
-                dest.copy_from_slice(src);
-            });
+    pub fn fill_rect(&mut self, x: usize, y: usize, width: usize, height: usize, rgba: &Rgba) {
+        self.frame.put_rgba(x, y, width, height, self.width, rgba);
     }
 
     pub fn clear_rect(&mut self, x: usize, y: usize, width: usize, height: usize) {
