@@ -1,20 +1,20 @@
 mod sequence_iterator;
 use ansiplay::Music;
+pub use codepage437::{ascii, CP437String};
+pub use sauce::{Sauce, COMNT_HEADER, SAUCE_HEADER};
 use sequence_iterator::IntoNumberSequenceIter;
-
-const SAUCE_HEADER: [u8; 7] = [0x53, 0x41, 0x55, 0x43, 0x45, 0x30, 0x30];
-const COMNT_HEADER: [u8; 5] = [0x43, 0x4F, 0x4D, 0x4E, 0x54];
 
 enum State {
     Literal,
     Escape,
     EndOfFile(usize),
     Sequence(usize),
-    SauceRecord(usize),
-    SauceComment(usize),
+    SauceRecord(usize, usize),
+    SauceComment(usize, usize),
     Music(usize),
 }
 
+#[derive(Clone, Debug)]
 pub enum Sequence {
     Literal(u8),
     CarriageReturn,
@@ -32,8 +32,7 @@ pub enum Sequence {
     SelectGraphicsRendition(Vec<usize>),
     SavePosition,
     RestorePosition,
-    SauceRecord(Vec<u8>),
-    SauceComment(Vec<u8>),
+    SauceRecord(Box<Sauce>),
     PabloTrueColourBackground(u8, u8, u8),
     PabloTrueColourForeground(u8, u8, u8),
     Music(Music),
@@ -45,7 +44,7 @@ pub struct Parser {
     state: State,
     bytes: Vec<u8>,
     position: usize,
-    baud_rate: usize,
+    baud_rate: Option<usize>,
 }
 
 impl Default for Parser {
@@ -54,15 +53,15 @@ impl Default for Parser {
             state: State::Literal,
             bytes: vec![],
             position: 0,
-            baud_rate: 14400,
+            baud_rate: Some(14400),
         }
     }
 }
 
 impl Parser {
-    pub fn new(baud_rate: usize) -> Self {
+    pub fn new(baud_rate: impl Into<Option<usize>>) -> Self {
         Self {
-            baud_rate,
+            baud_rate: baud_rate.into(),
             ..Default::default()
         }
     }
@@ -80,30 +79,23 @@ impl Iterator for Parser {
             if let Some(byte) = self.bytes.get(self.position) {
                 self.position += 1;
                 match self.state {
-                    State::Literal => match byte {
-                        // Tab
-                        0x09 => return Some(Sequence::Tab),
-                        // LineFeed
-                        0x0a => return Some(Sequence::LineFeed),
-                        // CarriageReturn
-                        0x0d => return Some(Sequence::CarriageReturn),
-                        // EOF
-                        0x1a => self.state = State::EndOfFile(self.position),
-                        // Esc
-                        0x1b => self.state = State::Escape,
+                    State::Literal => match *byte {
+                        ascii::HORIZONTAL_TAB => return Some(Sequence::Tab),
+                        ascii::LINE_FEED => return Some(Sequence::LineFeed),
+                        ascii::CARRIAGE_RETURN => return Some(Sequence::CarriageReturn),
+                        ascii::END_OF_FILE => self.state = State::EndOfFile(self.position),
+                        ascii::ESCAPE => self.state = State::Escape,
                         _ => return Some(Sequence::Literal(*byte)),
                     },
-                    State::Escape => match byte {
-                        // '['
-                        0x5b => self.state = State::Sequence(self.position),
+                    State::Escape => match *byte {
+                        ascii::LEFT_SQUARE_BRACKET => self.state = State::Sequence(self.position),
                         _ => {
                             self.state = State::Literal;
                             return Some(Sequence::Literal(*byte));
                         }
                     },
-                    State::Sequence(start) => match byte {
-                        // 'A'
-                        0x41 => {
+                    State::Sequence(start) => match *byte {
+                        ascii::UPPERCASE_A => {
                             self.state = State::Literal;
                             let amount = self.bytes[start..self.position - 1]
                                 .into_sequence_iter_with_default(1)
@@ -111,8 +103,7 @@ impl Iterator for Parser {
                                 .unwrap_or(1);
                             return Some(Sequence::CursorUp(amount));
                         }
-                        // 'B'
-                        0x42 => {
+                        ascii::UPPERCASE_B => {
                             self.state = State::Literal;
                             let amount = self.bytes[start..self.position - 1]
                                 .into_sequence_iter_with_default(1)
@@ -120,8 +111,7 @@ impl Iterator for Parser {
                                 .unwrap_or(1);
                             return Some(Sequence::CursorDown(amount));
                         }
-                        // 'C'
-                        0x43 => {
+                        ascii::UPPERCASE_C => {
                             self.state = State::Literal;
                             let amount = self.bytes[start..self.position - 1]
                                 .into_sequence_iter_with_default(1)
@@ -129,8 +119,7 @@ impl Iterator for Parser {
                                 .unwrap_or(1);
                             return Some(Sequence::CursorForward(amount));
                         }
-                        // 'D'
-                        0x44 => {
+                        ascii::UPPERCASE_D => {
                             self.state = State::Literal;
                             let amount = self.bytes[start..self.position - 1]
                                 .into_sequence_iter_with_default(1)
@@ -138,8 +127,7 @@ impl Iterator for Parser {
                                 .unwrap_or(1);
                             return Some(Sequence::CursorBack(amount));
                         }
-                        // 'f' | 'H'
-                        0x66 | 0x48 => {
+                        ascii::LOWERCASE_F | ascii::UPPERCASE_H => {
                             self.state = State::Literal;
                             let mut seq = self.bytes[start..self.position - 1]
                                 .into_sequence_iter_with_default(1);
@@ -147,24 +135,21 @@ impl Iterator for Parser {
                             let column = seq.next().unwrap_or(1);
                             return Some(Sequence::CursorPosition(row - 1, column - 1));
                         }
-                        // 'h'
-                        0x68 => {
+                        ascii::LOWERCASE_H => {
                             self.state = State::Literal;
                             let mut seq = self.bytes[start..self.position - 1].into_sequence_iter();
                             if let Some(value) = seq.next() {
                                 return Some(Sequence::SetScreenMode(value));
                             }
                         }
-                        // 'l'
-                        0x6c => {
+                        ascii::LOWERCASE_L => {
                             self.state = State::Literal;
                             let mut seq = self.bytes[start..self.position - 1].into_sequence_iter();
                             if let Some(value) = seq.next() {
                                 return Some(Sequence::ResetScreenMode(value));
                             }
                         }
-                        // 'J'
-                        0x4a => {
+                        ascii::UPPERCASE_J => {
                             self.state = State::Literal;
                             let value = self.bytes[start..self.position - 1]
                                 .into_sequence_iter_with_default(0)
@@ -172,8 +157,7 @@ impl Iterator for Parser {
                                 .unwrap_or(0);
                             return Some(Sequence::EraseDisplay(value));
                         }
-                        // 'K'
-                        0x4b => {
+                        ascii::UPPERCASE_K => {
                             self.state = State::Literal;
                             let value = self.bytes[start..self.position - 1]
                                 .into_sequence_iter_with_default(0)
@@ -181,25 +165,21 @@ impl Iterator for Parser {
                                 .unwrap_or(0);
                             return Some(Sequence::EraseInLine(value));
                         }
-                        // 'M'
-                        0x4d => {
+                        ascii::UPPERCASE_M => {
                             self.state = State::Music(self.position - 1);
                         }
-                        // 'm'
-                        0x6d => {
+                        ascii::LOWERCASE_M => {
                             self.state = State::Literal;
                             let vec = self.bytes[start..self.position - 1]
                                 .into_sequence_iter()
                                 .collect();
                             return Some(Sequence::SelectGraphicsRendition(vec));
                         }
-                        // 's'
-                        0x73 => {
+                        ascii::LOWERCASE_S => {
                             self.state = State::Literal;
                             return Some(Sequence::SavePosition);
                         }
-                        // 't'
-                        0x74 => {
+                        ascii::LOWERCASE_T => {
                             self.state = State::Literal;
                             let mut iter =
                                 self.bytes[start..self.position - 1].into_sequence_iter();
@@ -225,13 +205,11 @@ impl Iterator for Parser {
                                 }
                             }
                         }
-                        // 'u'
-                        0x75 => {
+                        ascii::LOWERCASE_U => {
                             self.state = State::Literal;
                             return Some(Sequence::RestorePosition);
                         }
-                        // '@'..='~'
-                        0x40..=0x7e => {
+                        ascii::AT_SIGN..=ascii::TILDE => {
                             self.state = State::Literal;
                             return Some(Sequence::Unknown(
                                 self.bytes[start..self.position - 1].to_vec(),
@@ -240,53 +218,63 @@ impl Iterator for Parser {
                         }
                         _ => {}
                     },
-                    State::EndOfFile(start) => {
-                        if self.position == start + COMNT_HEADER.len()
-                            && self.bytes[start..self.position] == COMNT_HEADER
+                    State::EndOfFile(eof_start) => {
+                        if self.position == eof_start + COMNT_HEADER.len()
+                            && self.bytes[eof_start..self.position] == COMNT_HEADER
                         {
-                            self.state = State::SauceComment(self.position);
-                        } else if self.position == start + SAUCE_HEADER.len() {
-                            if self.bytes[start..self.position] == SAUCE_HEADER {
-                                self.state = State::SauceRecord(start);
+                            self.state = State::SauceComment(eof_start, self.position);
+                        } else if self.position == eof_start + SAUCE_HEADER.len() {
+                            if self.bytes[eof_start..self.position] == SAUCE_HEADER {
+                                self.state = State::SauceRecord(eof_start, eof_start);
                             } else {
                                 self.state = State::Literal;
-                                self.position -= 7;
+                                self.position -= SAUCE_HEADER.len();
                             }
                         }
                     }
-                    State::SauceRecord(start) => {
-                        if self.position == start + 128 {
-                            return Some(Sequence::SauceRecord(
-                                self.bytes[start..self.position].to_vec(),
-                            ));
+                    State::SauceRecord(eof_start, sauce_start) => {
+                        if self.position == sauce_start + 128 {
+                            match Sauce::try_from(&self.bytes[eof_start..self.position]) {
+                                Ok(sauce) => return Some(Sequence::SauceRecord(Box::new(sauce))),
+                                Err(err) => eprintln!("{err}"),
+                            }
                         }
                     }
-                    State::SauceComment(start) => {
-                        if self.position == start + 64 {
-                            if self.bytes[start..start + SAUCE_HEADER.len()] == SAUCE_HEADER {
-                                self.state = State::SauceRecord(start);
-                            } else {
-                                self.state = State::SauceComment(self.position);
-                                return Some(Sequence::SauceComment(
-                                    self.bytes[start..self.position].to_vec(),
-                                ));
-                            }
+                    State::SauceComment(eof_start, comments_start) => {
+                        if (self.position - comments_start) % 64 == 0
+                            && self.bytes[self.position..self.position + SAUCE_HEADER.len()]
+                                == SAUCE_HEADER
+                        {
+                            self.state = State::SauceRecord(eof_start, self.position);
                         }
                     }
                     State::Music(start) => {
-                        if *byte == 0x0e {
+                        if *byte == ascii::SHIFT_OUT {
                             self.state = State::Literal;
                             let music = Music::new(&self.bytes[start..self.position - 1]);
                             return Some(Sequence::Music(music));
                         }
                     }
                 }
-                if self.position % (self.baud_rate as f32 / 8.0 / 60.0) as usize == 0 {
-                    return Some(Sequence::Update);
+                if let Some(baud_rate) = self.baud_rate {
+                    if self.position % (baud_rate as f32 / 8.0 / 60.0) as usize == 0 {
+                        return Some(Sequence::Update);
+                    }
                 }
             } else {
                 return None;
             }
         }
+    }
+}
+
+#[test]
+fn test() {
+    // let bytes = std::fs::read("/Users/andyh/src/ansimation.js/docs/ans/rad-PIRANHA.ANS").unwrap();
+    let bytes = std::fs::read("/Users/andyh/src/ansimation.js/docs/ans/LD-TFGS.ANS").unwrap();
+    let mut parser = Parser::new(None);
+    parser.input(bytes);
+    if let Some(Sequence::SauceRecord(sauce)) = parser.last() {
+        println!("{sauce}");
     }
 }

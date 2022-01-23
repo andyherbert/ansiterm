@@ -1,3 +1,5 @@
+use codepage437::ascii;
+
 enum ParsedNumber {
     Some(usize),
     Invalid,
@@ -17,17 +19,15 @@ impl<'a> Iterator for NumberSequenceIterator<'a> {
         let mut current_number = ParsedNumber::None;
         while let Some(byte) = self.bytes.get(self.position) {
             self.position += 1;
-            current_number = match byte {
-                // '0'..='9'
-                0x30..=0x39 => {
+            current_number = match *byte {
+                ascii::DIGIT_0..=ascii::DIGIT_9 => {
                     if let ParsedNumber::Some(value) = current_number {
-                        ParsedNumber::Some((value * 10) + (byte - 0x30) as usize)
+                        ParsedNumber::Some((value * 10) + (byte - ascii::DIGIT_0) as usize)
                     } else {
-                        ParsedNumber::Some((byte - 0x30) as usize)
+                        ParsedNumber::Some((byte - ascii::DIGIT_0) as usize)
                     }
                 }
-                // ';'
-                0x3b => match current_number {
+                ascii::SEMI_COLON => match current_number {
                     ParsedNumber::Some(value) => return Some(value),
                     ParsedNumber::Invalid => return self.next(),
                     ParsedNumber::None => match self.default {
