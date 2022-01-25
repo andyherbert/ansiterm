@@ -4,7 +4,7 @@ pub use std::{fmt, str::FromStr};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum LetterSpacing {
-    Undefined,
+    None,
     EightPixels,
     NinePixels,
 }
@@ -18,7 +18,7 @@ impl Default for LetterSpacing {
 impl fmt::Display for LetterSpacing {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            LetterSpacing::Undefined => write!(f, "Undefined"),
+            LetterSpacing::None => write!(f, "None"),
             LetterSpacing::EightPixels => write!(f, "8px"),
             LetterSpacing::NinePixels => write!(f, "9px"),
         }
@@ -29,7 +29,7 @@ impl FromStr for LetterSpacing {
     type Err = SauceError;
     fn from_str(string: &str) -> Result<Self, Self::Err> {
         match string {
-            "Undefined" => Ok(LetterSpacing::Undefined),
+            "None" => Ok(LetterSpacing::None),
             "8px" => Ok(LetterSpacing::EightPixels),
             "9px" => Ok(LetterSpacing::NinePixels),
             _ => Err(SauceError::InvalidLetterSpacingValue),
@@ -40,7 +40,7 @@ impl FromStr for LetterSpacing {
 impl From<u8> for LetterSpacing {
     fn from(value: u8) -> Self {
         match (value >> 1) & 3 {
-            0 => LetterSpacing::Undefined,
+            0 => LetterSpacing::None,
             1 => LetterSpacing::EightPixels,
             2 => LetterSpacing::NinePixels,
             _ => unreachable!(),
@@ -51,7 +51,7 @@ impl From<u8> for LetterSpacing {
 impl From<&LetterSpacing> for u8 {
     fn from(letterspacing: &LetterSpacing) -> Self {
         match letterspacing {
-            LetterSpacing::Undefined => 0,
+            LetterSpacing::None => 0,
             LetterSpacing::EightPixels => 1 << 1,
             LetterSpacing::NinePixels => 2 << 1,
         }

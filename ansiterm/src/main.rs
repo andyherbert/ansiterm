@@ -147,7 +147,7 @@ fn main() {
                 Sequence::CursorDown(amount) => term.cursor_down(amount),
                 Sequence::CursorForward(amount) => term.cursor_forward(amount),
                 Sequence::CursorBack(amount) => term.cursor_back(amount),
-                Sequence::CursorPosition(row, column) => {
+                Sequence::CursorPosition { row, column } => {
                     term.move_cursor_to(column, row);
                     if column == 1 && row == 1 {
                         window.request_redraw();
@@ -163,8 +163,12 @@ fn main() {
                 Sequence::SauceRecord(sauce) => {
                     println!("{sauce}");
                 }
-                Sequence::PabloTrueColourBackground(r, g, b) => term.true_colour_bg(r, g, b),
-                Sequence::PabloTrueColourForeground(r, g, b) => term.true_colour_fg(r, g, b),
+                Sequence::PabloTrueColourBackground { red, green, blue } => {
+                    term.true_colour_bg(red, green, blue)
+                }
+                Sequence::PabloTrueColourForeground { red, green, blue } => {
+                    term.true_colour_fg(red, green, blue)
+                }
                 Sequence::Music(music) => {
                     if let Some(player) = player.take() {
                         spawned_player = match PlayerThread::new(player, &stream, music) {
@@ -177,7 +181,7 @@ fn main() {
                     }
                 }
                 Sequence::Update => window.request_redraw(),
-                Sequence::Unknown(vec, terminator) => println!("{:?}, {}", vec, terminator),
+                Sequence::Unknown { bytes, terminator } => println!("{:?}, {}", bytes, terminator),
             }
         } else {
             window.request_redraw();

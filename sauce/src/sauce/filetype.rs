@@ -72,6 +72,12 @@ pub enum FileType {
     Sqz,
 }
 
+impl Default for FileType {
+    fn default() -> Self {
+        FileType::None
+    }
+}
+
 impl fmt::Display for FileType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {

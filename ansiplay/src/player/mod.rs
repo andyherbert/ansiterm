@@ -183,7 +183,7 @@ impl Player {
                 MusicEntity::Pause(value) => self.pause(value, &sink),
                 MusicEntity::IncreaseOctave => self.octave += 1,
                 MusicEntity::DecreaseOctave => self.octave -= 1,
-                MusicEntity::Note(note, info) => self.play_note(note, info, &sink),
+                MusicEntity::Note { note, info } => self.play_note(note, info, &sink),
                 MusicEntity::SoundCode(info) => self.play_sound_code(info, &sink),
             }
         }

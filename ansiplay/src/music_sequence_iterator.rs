@@ -188,25 +188,46 @@ impl<'a> Iterator for MusicSequenceIterator<'a> {
                     return Some(MusicEntity::SoundCode(self.parse_sound_code()?));
                 }
                 ascii::UPPERCASE_A | ascii::LOWERCASE_A => {
-                    return Some(MusicEntity::Note(Note::A, self.parse_note_info()))
+                    return Some(MusicEntity::Note {
+                        note: Note::A,
+                        info: self.parse_note_info(),
+                    })
                 }
                 ascii::UPPERCASE_B | ascii::LOWERCASE_B => {
-                    return Some(MusicEntity::Note(Note::B, self.parse_note_info()))
+                    return Some(MusicEntity::Note {
+                        note: Note::B,
+                        info: self.parse_note_info(),
+                    })
                 }
                 ascii::UPPERCASE_C | ascii::LOWERCASE_C => {
-                    return Some(MusicEntity::Note(Note::C, self.parse_note_info()))
+                    return Some(MusicEntity::Note {
+                        note: Note::C,
+                        info: self.parse_note_info(),
+                    })
                 }
                 ascii::UPPERCASE_D | ascii::LOWERCASE_D => {
-                    return Some(MusicEntity::Note(Note::D, self.parse_note_info()))
+                    return Some(MusicEntity::Note {
+                        note: Note::D,
+                        info: self.parse_note_info(),
+                    })
                 }
                 ascii::UPPERCASE_E | ascii::LOWERCASE_E => {
-                    return Some(MusicEntity::Note(Note::E, self.parse_note_info()))
+                    return Some(MusicEntity::Note {
+                        note: Note::E,
+                        info: self.parse_note_info(),
+                    })
                 }
                 ascii::UPPERCASE_F | ascii::LOWERCASE_F => {
-                    return Some(MusicEntity::Note(Note::F, self.parse_note_info()))
+                    return Some(MusicEntity::Note {
+                        note: Note::F,
+                        info: self.parse_note_info(),
+                    })
                 }
                 ascii::UPPERCASE_G | ascii::LOWERCASE_G => {
-                    return Some(MusicEntity::Note(Note::G, self.parse_note_info()))
+                    return Some(MusicEntity::Note {
+                        note: Note::G,
+                        info: self.parse_note_info(),
+                    })
                 }
                 ascii::UPPERCASE_L | ascii::LOWERCASE_L => {
                     return self.parse_int(true, false).map(MusicEntity::Length)

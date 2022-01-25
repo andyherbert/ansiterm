@@ -2,7 +2,7 @@ use codepage437::{CP437Error, CP437String};
 use serde::{de, Deserialize, Serialize};
 use std::{fmt, str::FromStr};
 
-use crate::COMNT_HEADER;
+use crate::COMNT_HEAD;
 
 #[derive(Clone, Default, Debug, PartialEq)]
 pub struct Comments {
@@ -74,15 +74,15 @@ impl fmt::Display for Comments {
 
 impl From<&Comments> for Vec<u8> {
     fn from(comments: &Comments) -> Self {
-        let mut bytes = vec![0; comments.len() * 64 + COMNT_HEADER.len()];
-        bytes[0..COMNT_HEADER.len()].copy_from_slice(&COMNT_HEADER);
+        let mut bytes = vec![0; comments.len() * 64 + COMNT_HEAD.len()];
+        bytes[0..COMNT_HEAD.len()].copy_from_slice(&COMNT_HEAD);
         let comment_bytes = comments
             .strings
             .iter()
             .map(|cp437| cp437.pad_with_spaces(64).as_slice().to_vec())
             .collect::<Vec<Vec<u8>>>()
             .concat();
-        bytes[COMNT_HEADER.len()..].copy_from_slice(comment_bytes.as_slice());
+        bytes[COMNT_HEAD.len()..].copy_from_slice(comment_bytes.as_slice());
         bytes
     }
 }

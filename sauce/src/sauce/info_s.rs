@@ -133,6 +133,12 @@ pub enum InfoS {
     Custom(CP437String),
 }
 
+impl Default for InfoS {
+    fn default() -> Self {
+        InfoS::Custom(CP437String::new())
+    }
+}
+
 impl TryFrom<&str> for InfoS {
     type Error = CP437Error;
 

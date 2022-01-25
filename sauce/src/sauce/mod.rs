@@ -14,9 +14,12 @@ pub use info_s::InfoS;
 pub use letter_spacing::LetterSpacing;
 pub use sauce_error::SauceError;
 use serde::{Deserialize, Serialize};
-use std::{error, fmt, fs};
+use std::{
+    fmt, fs,
+    path::{Path, PathBuf},
+};
 
-pub const SAUCE_HEADER: [u8; 7] = [
+pub const SAUCE_HEAD: [u8; 7] = [
     ascii::UPPERCASE_S,
     ascii::UPPERCASE_A,
     ascii::UPPERCASE_U,
@@ -26,7 +29,7 @@ pub const SAUCE_HEADER: [u8; 7] = [
     ascii::DIGIT_0,
 ];
 
-pub const COMNT_HEADER: [u8; 5] = [
+pub const COMNT_HEAD: [u8; 5] = [
     ascii::UPPERCASE_C,
     ascii::UPPERCASE_O,
     ascii::UPPERCASE_M,
@@ -50,48 +53,93 @@ fn unpack(bytes: &[u8]) -> usize {
     value
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
-pub struct FileInfo {
-    pub path: String,
-    pub size: usize,
-}
-
-#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
 pub struct Sauce {
-    title: CP437String,
-    author: CP437String,
-    group: CP437String,
-    year: CP437String,
-    month: CP437String,
-    date: CP437String,
-    filesize: usize,
-    datatype: DataType,
-    filetype: FileType,
-    info_1: usize,
-    info_2: usize,
-    info_3: usize,
-    info_4: usize,
-    ice_colors: bool,
-    letter_spacing: LetterSpacing,
-    aspect_ratio: AspectRatio,
-    info_s: InfoS,
-    comments: Comments,
-    path: Option<String>,
+    pub title: CP437String,
+    pub author: CP437String,
+    pub group: CP437String,
+    pub year: CP437String,
+    pub month: CP437String,
+    pub date: CP437String,
+    pub filesize: usize,
+    pub datatype: DataType,
+    pub filetype: FileType,
+    pub info_1: usize,
+    pub info_2: usize,
+    pub info_3: usize,
+    pub info_4: usize,
+    pub ice_colors: bool,
+    pub letter_spacing: LetterSpacing,
+    pub aspect_ratio: AspectRatio,
+    pub info_s: InfoS,
+    pub comments: Comments,
+    pub path: Option<PathBuf>,
 }
 
 impl Sauce {
-    pub fn read(path: &str) -> Result<Option<Sauce>, Box<dyn error::Error>> {
-        let bytes = fs::read(path)?;
-        match Sauce::try_from(bytes.as_slice()) {
-            Ok(mut sauce) => {
-                sauce.path = path.to_string().into();
-                let filesize = bytes.len() - sauce.size();
-                if sauce.filesize != filesize {
-                    sauce.filesize = filesize;
+    pub fn new() -> Sauce {
+        Sauce::default()
+    }
+
+    pub fn read(path: impl AsRef<Path>) -> Result<Option<Sauce>, SauceError> {
+        match fs::read(&path) {
+            Ok(bytes) => match Sauce::try_from(bytes.as_slice()) {
+                Ok(mut sauce) => {
+                    sauce.path = Some(path.as_ref().to_owned());
+                    let filesize = bytes.len() - sauce.size();
+                    if sauce.filesize != filesize {
+                        sauce.filesize = filesize;
+                    }
+                    Ok(Some(sauce))
                 }
-                Ok(Some(sauce))
+                Err(SauceError::NoSauce) => Ok(None),
+                Err(err) => Err(err),
+            },
+            Err(_err) => Err(SauceError::FileReadError(
+                path.as_ref().to_string_lossy().to_string(),
+            )),
+        }
+    }
+
+    pub fn remove(path: impl AsRef<Path>) -> Result<(), SauceError> {
+        match fs::read(&path) {
+            Err(_err) => Err(SauceError::FileReadError(
+                path.as_ref().to_string_lossy().to_string(),
+            )),
+            Ok(mut file_bytes) => match Sauce::try_from(file_bytes.as_slice()) {
+                Err(SauceError::NoSauce) => Ok(()),
+                Err(err) => Err(err),
+                Ok(sauce) => {
+                    file_bytes.resize(file_bytes.len() - sauce.size(), 0);
+                    match fs::write(&path, file_bytes) {
+                        Ok(()) => Ok(()),
+                        Err(_err) => Err(SauceError::FileWriteError(
+                            path.as_ref().to_string_lossy().to_string(),
+                        )),
+                    }
+                }
+            },
+        }
+    }
+
+    pub fn write(&self, path: impl AsRef<Path>) -> Result<(), SauceError> {
+        let sauce_bytes = Vec::from(self);
+        match fs::read(&path) {
+            Err(_err) => Err(SauceError::FileReadError(
+                path.as_ref().to_string_lossy().to_string(),
+            )),
+            Ok(mut file_bytes) => {
+                if let Ok(sauce) = Sauce::try_from(file_bytes.as_slice()) {
+                    file_bytes.resize(file_bytes.len() - sauce.size(), 0);
+                }
+                file_bytes.extend(sauce_bytes);
+                match fs::write(&path, file_bytes) {
+                    Err(_err) => Err(SauceError::FileWriteError(
+                        path.as_ref().to_string_lossy().to_string(),
+                    )),
+                    Ok(()) => Ok(()),
+                }
             }
-            Err(_error) => Ok(None),
         }
     }
 
@@ -99,7 +147,7 @@ impl Sauce {
         if self.comments.is_empty() {
             128 + 1
         } else {
-            128 + (self.comments.len() * 64) + COMNT_HEADER.len() + 1
+            128 + (self.comments.len() * 64) + COMNT_HEAD.len() + 1
         }
     }
 }
@@ -108,16 +156,22 @@ impl TryFrom<&[u8]> for Sauce {
     type Error = SauceError;
 
     fn try_from(bytes: &[u8]) -> Result<Self, Self::Error> {
+        if bytes.len() < 128 {
+            return Err(SauceError::NoSauce);
+        }
         let sauce_start = bytes.len() - 128;
         match bytes.get(sauce_start..) {
-            Some(sauce_bytes) if sauce_bytes[..7] == SAUCE_HEADER => {
+            Some(sauce_bytes) if sauce_bytes[..SAUCE_HEAD.len()] == SAUCE_HEAD => {
                 let comments_len = sauce_bytes[104] as usize;
                 let mut comments = Comments::with_capacity(comments_len);
                 if comments_len > 0 {
-                    let comments_start = sauce_start - comments_len * 64 - COMNT_HEADER.len();
-                    match bytes.get(comments_start..sauce_start) {
-                        Some(comment_bytes) if comment_bytes[0..5] == COMNT_HEADER => {
-                            for bytes in comment_bytes[5..].chunks_exact(64) {
+                    let comments_size = comments_len * 64 + COMNT_HEAD.len();
+                    if comments_size > sauce_start {
+                        return Err(SauceError::CommentsMissing);
+                    }
+                    match bytes.get(sauce_start - comments_size..sauce_start) {
+                        Some(comment_bytes) if comment_bytes[0..COMNT_HEAD.len()] == COMNT_HEAD => {
+                            for bytes in comment_bytes[COMNT_HEAD.len()..].chunks_exact(64) {
                                 comments.push_bytes(bytes);
                             }
                         }
@@ -149,7 +203,7 @@ impl TryFrom<&[u8]> for Sauce {
                     comments,
                 })
             }
-            _ => Err(SauceError::HeaderMissing),
+            _ => Err(SauceError::NoSauce),
         }
     }
 }
@@ -167,7 +221,7 @@ impl From<&Sauce> for Vec<u8> {
         bytes[0] = ascii::END_OF_FILE;
         let sauce_start = bytes.len() - 128;
         let sauce_bytes = &mut bytes[sauce_start..];
-        sauce_bytes[0..=6].copy_from_slice(&SAUCE_HEADER);
+        sauce_bytes[0..=6].copy_from_slice(&SAUCE_HEAD);
         sauce_bytes[7..=41].copy_from_slice(sauce.title.pad_with_spaces(35).as_slice());
         sauce_bytes[42..=61].copy_from_slice(sauce.author.pad_with_spaces(20).as_slice());
         sauce_bytes[62..=81].copy_from_slice(sauce.group.pad_with_spaces(20).as_slice());
@@ -210,13 +264,15 @@ impl fmt::Display for Sauce {
         writeln!(f, "ice colors: {}", self.ice_colors)?;
         writeln!(f, "letter spacing: {}", self.letter_spacing)?;
         writeln!(f, "aspect ratio: {}", self.aspect_ratio)?;
-        writeln!(f, "info s: {}", self.info_s)?;
+        writeln!(f, "info string: {}", self.info_s)?;
         writeln!(f, "comments:")?;
         for comment in &self.comments {
             writeln!(f, "{comment}")?;
         }
         if let Some(ref path) = self.path {
-            writeln!(f, "path: {}", path)?;
+            if let Some(path) = path.as_path().to_str() {
+                writeln!(f, "path: {path}")?;
+            }
         }
         Ok(())
     }

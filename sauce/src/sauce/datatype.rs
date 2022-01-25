@@ -15,6 +15,12 @@ pub enum DataType {
     Executable,
 }
 
+impl Default for DataType {
+    fn default() -> Self {
+        DataType::None
+    }
+}
+
 impl fmt::Display for DataType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {

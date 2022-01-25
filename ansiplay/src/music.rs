@@ -68,7 +68,7 @@ pub enum MusicEntity {
     Pause(usize),
     IncreaseOctave,
     DecreaseOctave,
-    Note(Note, NoteInfo),
+    Note { note: Note, info: NoteInfo },
     SoundCode(SoundCodeInfo),
 }
 
@@ -141,7 +141,7 @@ impl Display for MusicEntity {
             MusicEntity::Pause(length) => write!(f, "P{}", length),
             MusicEntity::IncreaseOctave => write!(f, ">"),
             MusicEntity::DecreaseOctave => write!(f, "<"),
-            MusicEntity::Note(note, info) => write!(f, "{}{}", note, info),
+            MusicEntity::Note { note, info } => write!(f, "{}{}", note, info),
             MusicEntity::SoundCode(info) => info.fmt(f),
         }
     }

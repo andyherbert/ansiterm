@@ -8,5 +8,6 @@ members = [
     "codepage437",
     "ega_palette",
     "sauce",
-    "stdin_receiver"
+    "stdin_receiver",
+    "tmode",
 ]

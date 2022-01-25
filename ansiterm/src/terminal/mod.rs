@@ -252,11 +252,11 @@ impl Terminal {
         }
     }
 
-    pub fn true_colour_bg(&mut self, r: u8, g: u8, b: u8) {
-        self.pablo_true_colour_bg = Some([r, g, b, 255]);
+    pub fn true_colour_bg(&mut self, red: u8, green: u8, blue: u8) {
+        self.pablo_true_colour_bg = Some([red, green, blue, 255]);
     }
 
-    pub fn true_colour_fg(&mut self, r: u8, g: u8, b: u8) {
-        self.pablo_true_colour_fg = Some([r, g, b, 255]);
+    pub fn true_colour_fg(&mut self, red: u8, green: u8, blue: u8) {
+        self.pablo_true_colour_fg = Some([red, green, blue, 255]);
     }
 }
