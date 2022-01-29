@@ -1,5 +1,5 @@
 use crate::*;
-use rodio::{OutputStream, OutputStreamHandle};
+use rodio::{OutputStream, OutputStreamHandle, Source};
 use std::time::Duration;
 
 fn play_freq<F, W>(freq: f32, wave: F, stream_handle: &OutputStreamHandle)

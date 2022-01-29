@@ -15,8 +15,8 @@ mod sine;
 mod square;
 mod triangle;
 pub use noise::NoiseWave;
-/// Re-export from Rodio, A source of samples.
-pub use rodio::Source;
+/// Re-export Rodio
+pub use rodio;
 pub use saw::SawWave;
 pub use sine::SineWave;
 pub use square::SquareWave;

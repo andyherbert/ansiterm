@@ -2,9 +2,11 @@ use crate::{
     music::*,
     player::{Player, PlayerError},
 };
-use rodio::{OutputStreamHandle, Sink};
-use std::sync::mpsc::{self, Receiver, Sender, TryRecvError};
-use std::thread::{self, JoinHandle};
+use basic_waves::rodio::{OutputStreamHandle, Sink};
+use std::{
+    sync::mpsc::{self, Receiver, Sender, TryRecvError},
+    thread::{self, JoinHandle},
+};
 
 pub enum ThreadMessage {
     Interrupt,
@@ -23,22 +25,23 @@ impl PlayerThread {
     /// Consumes [Player] and immediately starts playing music.
     pub fn new(
         mut player: Player,
-        stream: &OutputStreamHandle,
+        stream_handle: &OutputStreamHandle,
         music: Music,
     ) -> Result<PlayerThread, PlayerError> {
         let (player_tx, rx) = mpsc::channel();
         let (tx, interrupt_rx) = mpsc::channel();
         player.rx = Some(interrupt_rx);
-        let sink = match Sink::try_new(stream) {
-            Ok(sink) => sink,
-            Err(_) => return Err(PlayerError::ThreadError),
-        };
-        let handle = thread::spawn(move || {
-            player.play(music, sink);
-            player_tx.send(()).ok();
-            player
-        });
-        Ok(PlayerThread { handle, rx, tx })
+        match Sink::try_new(stream_handle) {
+            Ok(sink) => {
+                let handle = thread::spawn(move || {
+                    player.play(music, &sink);
+                    player_tx.send(()).ok();
+                    player
+                });
+                Ok(PlayerThread { handle, rx, tx })
+            }
+            Err(_) => Err(PlayerError::ThreadError),
+        }
     }
 
     /// Indicates whether the [Player] has finished playing music and is

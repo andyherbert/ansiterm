@@ -1,12 +1,14 @@
 mod player_error;
 mod player_thread;
 use crate::music::*;
-use basic_waves::{Source, SquareWave};
+use basic_waves::{
+    rodio::{Sink, Source},
+    SquareWave,
+};
 use player_error::PlayerError;
 pub use player_thread::PlayerThread;
 use player_thread::ThreadMessage;
 use rand::prelude::*;
-use rodio::Sink;
 use std::{sync::mpsc, thread, time};
 
 const FREQS: [f32; 84] = [
@@ -128,25 +130,23 @@ impl Player {
                 self.play_pause(pause_ms, sink);
             }
         } else if let Some(delay) = info.delay {
-            let cycles = (delay as f32 / (1000.0 / 60.0)).floor() as usize;
-            let dur = time::Duration::from_millis(1000 / 60);
-            // Clear the channel, so any buffered messages are ignored.
             if let Some(ref rx) = self.rx {
+                let cycles = (delay as f32 / (1000.0 / 60.0)).floor() as usize;
+                let dur = time::Duration::from_millis(1000 / 60);
+                // Clear the channel, so any buffered messages are ignored.
                 while let Ok(message) = rx.try_recv() {
                     match message {
                         ThreadMessage::Interrupt => continue,
                         ThreadMessage::Abort => return,
                     }
                 }
-            }
-            for _ in 0..cycles {
-                // Interrupt if a message is received.
-                if let Some(ref rx) = self.rx {
+                for _ in 0..cycles {
+                    // Interrupt if a message is received.
                     if rx.try_recv().is_ok() {
                         break;
                     }
+                    thread::sleep(dur);
                 }
-                thread::sleep(dur);
             }
         }
     }
@@ -168,24 +168,22 @@ impl Player {
         self.play_frequency(frequency, play_ms, pause_ms, sink);
     }
 
-    /// Plays [Music] through the supplied [Sink] and blocks the current thread.
-    pub fn play(&mut self, music: Music, sink: Sink) {
-        for entity in music {
-            match entity {
-                MusicEntity::Operation(MusicOperation::Articulation(articulation)) => {
-                    self.articulation = articulation.clone();
-                }
-                MusicEntity::Operation(_operation) => {}
-                MusicEntity::Tempo(value) => self.tempo = value,
-                MusicEntity::Octave(value) => self.octave = value,
-                MusicEntity::Length(value) => self.length = value,
-                MusicEntity::RawNote(value) => self.play_raw_note(value, &sink),
-                MusicEntity::Pause(value) => self.pause(value, &sink),
-                MusicEntity::IncreaseOctave => self.octave += 1,
-                MusicEntity::DecreaseOctave => self.octave -= 1,
-                MusicEntity::Note { note, info } => self.play_note(note, info, &sink),
-                MusicEntity::SoundCode(info) => self.play_sound_code(info, &sink),
+    /// Plays an atomic element of music through the supplied [Sink] and blocks the current thread.
+    pub fn play_entity(&mut self, entity: MusicEntity, sink: &Sink) {
+        match entity {
+            MusicEntity::Operation(MusicOperation::Articulation(articulation)) => {
+                self.articulation = articulation;
             }
+            MusicEntity::Operation(_operation) => {}
+            MusicEntity::Tempo(value) => self.tempo = value,
+            MusicEntity::Octave(value) => self.octave = value,
+            MusicEntity::Length(value) => self.length = value,
+            MusicEntity::RawNote(value) => self.play_raw_note(value, sink),
+            MusicEntity::Pause(value) => self.pause(value, sink),
+            MusicEntity::IncreaseOctave => self.octave += 1,
+            MusicEntity::DecreaseOctave => self.octave -= 1,
+            MusicEntity::Note { note, info } => self.play_note(note, info, sink),
+            MusicEntity::SoundCode(info) => self.play_sound_code(info, sink),
         }
         if let Some(ref rx) = self.rx {
             let dur = time::Duration::from_millis(1000 / 60);
@@ -197,6 +195,13 @@ impl Player {
             }
         } else {
             sink.sleep_until_end();
+        }
+    }
+
+    /// Plays [Music] through the supplied [Sink] and blocks the current thread.
+    pub fn play(&mut self, music: Music, sink: &Sink) {
+        for entity in music {
+            self.play_entity(entity, sink);
         }
     }
 }

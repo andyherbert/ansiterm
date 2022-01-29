@@ -1,6 +1,7 @@
 mod music;
 mod music_sequence_iterator;
 mod player;
+pub use basic_waves::rodio;
 pub use music::Music;
 pub use music_sequence_iterator::{IntoMusicSequenceIter, MusicSequenceIterator};
 pub use player::{Player, PlayerThread};
@@ -8,14 +9,14 @@ pub use player::{Player, PlayerThread};
 #[cfg(test)]
 mod test {
     use crate::{Music, Player};
-    use rodio::{OutputStream, Sink};
+    use basic_waves::rodio::{OutputStream, Sink};
 
     fn play_str(string: &str) {
         let (_stream, stream_handle) = OutputStream::try_default().unwrap();
         let mut player = Player::default();
         let music = Music::from(string);
         let sink = Sink::try_new(&stream_handle).expect("sink");
-        player.play(music, sink);
+        player.play(music, &sink);
     }
 
     #[test]

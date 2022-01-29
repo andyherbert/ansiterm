@@ -17,7 +17,7 @@ impl<'a> MusicSequenceIterator<'a> {
         while let Some(byte) = self.bytes.get(self.position) {
             self.position += 1;
             match *byte {
-                ascii::COMMA => amount += 1,
+                ascii::PERIOD => amount += 1,
                 ascii::SPACE => {}
                 _ => {
                     self.position -= 1;
