@@ -1,10 +1,12 @@
 mod auto;
 mod export;
 mod import;
+use ansiart::{
+    codepage437::CP437String,
+    sauce::{AspectRatio, Comments, InfoS, LetterSpacing, Sauce},
+};
 use chrono::{Datelike, Local};
 use clap::{AppSettings, Parser};
-use codepage437::CP437String;
-use sauce::{AspectRatio, Comments, InfoS, LetterSpacing, Sauce};
 use std::{path::PathBuf, str::FromStr};
 
 #[derive(Debug, Parser)]
@@ -198,8 +200,7 @@ fn for_every_sauce(files: Vec<PathBuf>, fun: impl Fn(&mut Sauce)) {
     }
 }
 
-#[allow(unused_variables)]
-pub fn main(sauce_cmd: SauceCommand) {
+pub fn sauce_cmds(sauce_cmd: SauceCommand) {
     match sauce_cmd {
         SauceCommand::AspectLegacy { files } => {
             for_every_sauce(files, |sauce| sauce.aspect_ratio = AspectRatio::Legacy);

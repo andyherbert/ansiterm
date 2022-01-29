@@ -1,5 +1,5 @@
 use crate::terminal::display::GetAndPutRgba;
-use ega_palette::{Rgba, BLACK_RGBA};
+use ansiart::ega_palette::{Rgba, BLACK_RGBA};
 
 pub struct Buffer {
     pub frame: Vec<u8>,

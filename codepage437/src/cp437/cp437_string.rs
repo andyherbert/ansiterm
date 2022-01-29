@@ -133,14 +133,6 @@ impl FromStr for CP437String {
     }
 }
 
-impl TryFrom<&str> for CP437String {
-    type Error = CP437Error;
-
-    fn try_from(s: &str) -> Result<Self, Self::Error> {
-        CP437String::from_str(s)
-    }
-}
-
 impl From<&[u8]> for CP437String {
     fn from(bytes: &[u8]) -> Self {
         CP437String::from(bytes.to_vec())
@@ -201,9 +193,10 @@ impl<'de> Deserialize<'de> for CP437String {
 mod test {
     use crate::CP437String;
     use serde_json::to_string;
+    use std::str::FromStr;
     #[test]
     fn test() {
-        let a = CP437String::try_from("☺☻♥♦♣♠").expect("cp437 string");
+        let a = CP437String::from_str("☺☻♥♦♣♠").expect("cp437 string");
         let bytes: Vec<u8> = vec![1, 2, 3, 4, 5, 6];
         let b = CP437String::from(bytes.as_slice());
         assert_eq!(a, b);

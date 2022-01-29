@@ -1,4 +1,4 @@
-use sauce::Sauce;
+use ansiart::sauce::Sauce;
 use std::{fs, path::PathBuf};
 
 pub fn export(path: PathBuf, files: Vec<PathBuf>) {

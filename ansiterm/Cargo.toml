@@ -4,11 +4,6 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+ansiart = { version = "0.1", path = "../ansiart" }
+pixels = "0.9"
 winit = "0.26"
-pixels = "0.8"
-rodio = "0.14"
-ansiplay = { version = "0.1", path = "../ansiplay" }
-ansiparser = { version = "0.1", path = "../ansiparser" }
-codepage437 = { version = "0.1", path = "../codepage437" }
-ega_palette = { version = "0.1", path = "../ega_palette" }
-stdin_receiver = { version = "0.1", path = "../stdin_receiver" }

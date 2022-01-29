@@ -1,4 +1,4 @@
-use sauce::{DataType, FileType, Sauce};
+use ansiart::sauce::{DataType, FileType, Sauce};
 use std::path::{Path, PathBuf};
 
 fn update_or_create_sauce(path: &Path, fun: impl FnOnce(&mut Sauce)) {

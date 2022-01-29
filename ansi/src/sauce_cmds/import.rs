@@ -1,6 +1,5 @@
-use sauce::Sauce;
-use std::fs;
-use std::path::PathBuf;
+use ansiart::sauce::Sauce;
+use std::{fs, path::PathBuf};
 
 fn update_sauce(sauce: &Sauce) {
     if let Some(ref sauce_path) = sauce.path {

@@ -1,7 +1,8 @@
 [workspace]
 resolver = "2"
 members = [
-    "ansiparser",
+    "ansi",
+    "ansiart",
     "ansiplay",
     "ansiterm",
     "basic_waves",
@@ -9,5 +10,4 @@ members = [
     "ega_palette",
     "sauce",
     "stdin_receiver",
-    "tmode",
 ]

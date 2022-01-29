@@ -1,0 +1,16 @@
+[package]
+name = "ansi"
+version = "0.1.0"
+edition = "2021"
+authors = ["Andy Herbert <andy.herbert@gmail.com>"]
+description = "ANSI art interpretor, library, and tools."
+
+[dependencies]
+ansiart = { version = "0.1", path = "../ansiart" }
+ansiterm = { version = "0.1", path = "../ansiterm" }
+chrono = "0.4"
+clap = { version = "3.0",  features = ["derive"] }
+csv = "1.1"
+image = "0.23"
+serde_json = "1.0"
+stdin_receiver = { version = "0.1", path = "../stdin_receiver" }

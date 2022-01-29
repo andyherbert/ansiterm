@@ -1,6 +1,6 @@
 use codepage437::{raw, CP437Error, CP437String, Font, FontError};
 use serde::{de, Deserialize, Serialize};
-use std::fmt;
+use std::{fmt, str::FromStr};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum InfoS {
@@ -139,10 +139,10 @@ impl Default for InfoS {
     }
 }
 
-impl TryFrom<&str> for InfoS {
-    type Error = CP437Error;
+impl FromStr for InfoS {
+    type Err = CP437Error;
 
-    fn try_from(string: &str) -> Result<Self, Self::Error> {
+    fn from_str(string: &str) -> Result<Self, Self::Err> {
         match string {
             "IBM VGA" => Ok(InfoS::IbmVga),
             "IBM VGA50" => Ok(InfoS::IbmVga50),
@@ -271,7 +271,7 @@ impl TryFrom<&str> for InfoS {
             "C64 PETSCII shifted" => Ok(InfoS::C64PetsciiShifted),
             "Atari ATASCII" => Ok(InfoS::AtariAtascii),
             _ => {
-                let cp437 = CP437String::try_from(string)?;
+                let cp437 = CP437String::from_str(string)?;
                 Ok(InfoS::Custom(cp437))
             }
         }
@@ -280,14 +280,14 @@ impl TryFrom<&str> for InfoS {
 
 impl From<&CP437String> for InfoS {
     fn from(cp437_string: &CP437String) -> Self {
-        InfoS::try_from(cp437_string.strip_trailing_nulls().to_string().as_str())
+        InfoS::from_str(cp437_string.strip_trailing_nulls().to_string().as_str())
             .expect("legal cp437")
     }
 }
 
 impl From<&InfoS> for CP437String {
     fn from(info_s: &InfoS) -> Self {
-        CP437String::try_from(info_s.to_string().as_str())
+        CP437String::from_str(info_s.to_string().as_str())
             .expect("legal cp437")
             .pad_with_nulls(22)
     }
@@ -558,7 +558,7 @@ impl TryFrom<InfoS> for Font {
             InfoS::C64PetsciiUnshifted => Font::try_from(raw::PETSCII_UNSHIFTED_F08.as_ref()),
             InfoS::C64PetsciiShifted => Font::try_from(raw::PETSCII_UNSHIFTED_F08.as_ref()),
             InfoS::AtariAtascii => Font::try_from(raw::ATASCII_F08.as_ref()),
-            _ => Err(FontError::CouldNotLoadFont),
+            _ => Err(FontError::CouldNotLocateFont),
         }
     }
 }
@@ -585,7 +585,7 @@ impl<'de> de::Visitor<'de> for StringVisitor {
     where
         E: de::Error,
     {
-        match InfoS::try_from(value) {
+        match InfoS::from_str(value) {
             Ok(info_s) => Ok(info_s),
             Err(err) => Err(E::custom(err)),
         }

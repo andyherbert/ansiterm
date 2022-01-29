@@ -34,7 +34,7 @@ impl Comments {
     }
 
     pub fn push(&mut self, string: &str) -> Result<(), CP437Error> {
-        let string = CP437String::try_from(string)?;
+        let string = CP437String::from_str(string)?;
         self.strings.push(string.strip_trailing_spaces());
         Ok(())
     }

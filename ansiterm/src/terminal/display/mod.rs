@@ -1,9 +1,11 @@
 mod buffer;
 mod get_and_put_pixels;
 use crate::terminal::{Blink, Cursor};
+use ansiart::{
+    codepage437::{DrawFont, Font},
+    ega_palette::{EgaPalette, Rgba},
+};
 use buffer::Buffer;
-use codepage437::{DrawFont, Font};
-use ega_palette::{EgaPalette, Rgba};
 use get_and_put_pixels::GetAndPutRgba;
 
 pub enum Colour {

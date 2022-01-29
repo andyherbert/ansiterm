@@ -6,6 +6,7 @@ pub use draw_font::DrawFont;
 use ega_palette::{Rgba, BLACK_RGBA, WHITE_RGBA};
 pub use font_error::FontError;
 use image::{DynamicImage, ImageBuffer, Pixel};
+use std::{fs, path::Path};
 
 /// Structure to hold, read, write, and generate rgba data for fonts
 #[derive(Clone, Debug, PartialEq)]
@@ -23,8 +24,16 @@ impl Default for Font {
 }
 
 impl Font {
+    /// Attemptes to bitmask file
+    pub fn read(path: impl AsRef<Path>) -> Result<Font, FontError> {
+        match fs::read(path) {
+            Ok(bytes) => Font::try_from(bytes.as_slice()),
+            Err(_err) => Err(FontError::CannotReadFile),
+        }
+    }
+
     /// Attemptes to read an image constructed from a 16x16 grid, with each glyph 8 pixels wide
-    pub fn read_image(path: &str) -> Result<Font, FontError> {
+    pub fn read_image(path: impl AsRef<Path>) -> Result<Font, FontError> {
         match image::io::Reader::open(path) {
             Ok(reader) => match reader.decode() {
                 Ok(image) => Font::try_from(image),
@@ -35,7 +44,7 @@ impl Font {
     }
 
     /// Attemptes to write an image using a 16x16 grid arrangement
-    pub fn write_image(&self, path: &str) -> Result<(), FontError> {
+    pub fn write_image(&self, path: impl AsRef<Path>) -> Result<(), FontError> {
         let buffer = ImageBuffer::try_from(self)?;
         match buffer.save(path) {
             Ok(()) => Ok(()),
@@ -44,7 +53,7 @@ impl Font {
     }
 
     /// Attempts to write bitmask data to a file
-    pub fn write(&self, path: &str) -> Result<(), FontError> {
+    pub fn write(&self, path: impl AsRef<Path>) -> Result<(), FontError> {
         match std::fs::write(path, &self.bytes) {
             Ok(()) => Ok(()),
             Err(_err) => Err(FontError::CannotWriteFile),

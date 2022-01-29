@@ -1,11 +1,10 @@
 mod blink;
 mod cursor;
 mod display;
-// mod palette;
+use ansiart::ega_palette::{EgaPalette, Rgba};
 use blink::Blink;
 use cursor::Cursor;
 use display::{Colour, TerminalDisplay};
-use ega_palette::{EgaPalette, Rgba};
 
 pub struct Terminal {
     display: TerminalDisplay,
@@ -20,11 +19,11 @@ pub struct Terminal {
     bold: bool,
     pablo_true_colour_bg: Option<Rgba>,
     pablo_true_colour_fg: Option<Rgba>,
-    ice_colours: bool,
+    ice_colors: bool,
 }
 
 impl Terminal {
-    pub fn new(columns: usize, rows: usize, ice_colours: bool) -> Self {
+    pub fn new(columns: usize, rows: usize, ice_colors: bool) -> Self {
         Self {
             display: TerminalDisplay::new(columns, rows, EgaPalette::ansi()),
             cursor: Cursor::new(2),
@@ -38,7 +37,7 @@ impl Terminal {
             bold: false,
             pablo_true_colour_bg: None,
             pablo_true_colour_fg: None,
-            ice_colours,
+            ice_colors,
         }
     }
 
@@ -46,7 +45,7 @@ impl Terminal {
         (self.display.width as u32, self.display.height as u32)
     }
 
-    pub fn select_graphics_rendition(&mut self, values: Vec<usize>) {
+    pub fn select_graphics_rendition(&mut self, values: &[usize]) {
         for value in values {
             match value {
                 0 => {
@@ -150,7 +149,7 @@ impl Terminal {
             self.cursor.row,
             fg,
             bg,
-            self.blink && !self.ice_colours,
+            self.blink && !self.ice_colors,
         );
         if self.cursor.column == self.columns - 1 {
             self.cursor.column = 0;
@@ -252,11 +251,11 @@ impl Terminal {
         }
     }
 
-    pub fn true_colour_bg(&mut self, red: u8, green: u8, blue: u8) {
-        self.pablo_true_colour_bg = Some([red, green, blue, 255]);
+    pub fn rgb_bg(&mut self, r: u8, g: u8, b: u8) {
+        self.pablo_true_colour_bg = Some([r, g, b, 255]);
     }
 
-    pub fn true_colour_fg(&mut self, red: u8, green: u8, blue: u8) {
-        self.pablo_true_colour_fg = Some([red, green, blue, 255]);
+    pub fn rgb_fg(&mut self, r: u8, g: u8, b: u8) {
+        self.pablo_true_colour_fg = Some([r, g, b, 255]);
     }
 }

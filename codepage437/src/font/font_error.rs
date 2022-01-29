@@ -4,6 +4,7 @@ use std::{error, fmt};
 #[derive(Clone, Debug, PartialEq)]
 pub enum FontError {
     CouldNotLoadFont,
+    CouldNotLocateFont,
     IllegalFontSize,
     IllegalFontHeight,
     CannotReadFile,
@@ -16,6 +17,7 @@ impl fmt::Display for FontError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             FontError::CouldNotLoadFont => write!(f, "Could not load font"),
+            FontError::CouldNotLocateFont => write!(f, "Could not locate font"),
             FontError::IllegalFontSize => write!(f, "Illegal font size"),
             FontError::IllegalFontHeight => write!(f, "Illegal font height"),
             FontError::CannotReadFile => write!(f, "Cannot read file"),

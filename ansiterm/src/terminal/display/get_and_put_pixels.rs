@@ -1,4 +1,4 @@
-use ega_palette::Rgba;
+use ansiart::ega_palette::Rgba;
 
 pub trait GetAndPutRgba {
     fn put_rgba(
