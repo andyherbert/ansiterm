@@ -80,27 +80,19 @@ pub fn term_cmds(term_cmd: TermCommand) -> ! {
             scale,
         } => {
             let parser = AnsiParser::with_baud(baud_rate);
-            let mut std_reciever = Some(StdInReceiver::default());
+            let std_reciever = StdInReceiver::default();
             terminal(
                 parser,
                 columns,
                 rows,
                 scale,
                 ice_colors,
-                move |parser, event, _| match event {
-                    TerminalEvent::RedrawRequested => {
-                        if let Some(ref std_receiver) = std_reciever {
-                            if let Some(bytes) = std_receiver.recv().expect("Thread error") {
-                                parser.input(bytes)
-                            }
+                move |parser, event, _| {
+                    if let TerminalEvent::RedrawRequested = event {
+                        if let Some(bytes) = std_reciever.recv().expect("Thread error") {
+                            parser.input(bytes)
                         }
                     }
-                    TerminalEvent::CloseRequested => {
-                        if let Some(std_receiver) = std_reciever.take() {
-                            std_receiver.join().expect("Thread error");
-                        }
-                    }
-                    _ => {}
                 },
             );
         }
