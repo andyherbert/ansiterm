@@ -1,8 +1,13 @@
 mod sequence_iterator;
+pub use ansiplay;
 use ansiplay::Music;
-pub use codepage437::{ascii, CP437String};
-pub use sauce::{Sauce, COMNT_HEAD, SAUCE_HEAD};
+pub use codepage437;
+use codepage437::ascii;
+pub use ega_palette;
+pub use sauce;
+use sauce::{Sauce, COMNT_HEAD, SAUCE_HEAD};
 use sequence_iterator::IntoNumberSequenceIter;
+use std::{fs, io, path::Path};
 
 enum State {
     Literal,
@@ -39,21 +44,21 @@ pub enum Sequence {
     SavePosition,
     RestorePosition,
     SauceRecord(Box<Sauce>),
-    PabloTrueColourBackground { red: u8, green: u8, blue: u8 },
-    PabloTrueColourForeground { red: u8, green: u8, blue: u8 },
+    TrueColourBg { r: u8, g: u8, b: u8 },
+    TrueColourFg { r: u8, g: u8, b: u8 },
     Music(Music),
     Unknown { bytes: Vec<u8>, terminator: u8 },
     Update,
 }
 
-pub struct Parser {
+pub struct AnsiParser {
     state: State,
     bytes: Vec<u8>,
     position: usize,
     baud_rate: Option<usize>,
 }
 
-impl Default for Parser {
+impl Default for AnsiParser {
     fn default() -> Self {
         Self {
             state: State::Literal,
@@ -64,10 +69,22 @@ impl Default for Parser {
     }
 }
 
-impl Parser {
-    pub fn new(baud_rate: impl Into<Option<usize>>) -> Self {
-        Self {
-            baud_rate: baud_rate.into(),
+impl AnsiParser {
+    pub fn read(path: impl AsRef<Path>) -> Result<AnsiParser, io::Error> {
+        let bytes = fs::read(path)?;
+        Ok(AnsiParser {
+            bytes,
+            ..Default::default()
+        })
+    }
+
+    pub fn new() -> AnsiParser {
+        Default::default()
+    }
+
+    pub fn with_baud(baud_rate: usize) -> AnsiParser {
+        AnsiParser {
+            baud_rate: Some(baud_rate),
             ..Default::default()
         }
     }
@@ -77,7 +94,7 @@ impl Parser {
     }
 }
 
-impl Iterator for Parser {
+impl Iterator for AnsiParser {
     type Item = Sequence;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -189,26 +206,18 @@ impl Iterator for Parser {
                             self.state = State::Literal;
                             let mut iter =
                                 self.bytes[start..self.position - 1].into_sequence_iter();
-                            if let (Some(fg_or_bg), Some(red), Some(green), Some(blue)) =
+                            if let (Some(fg_or_bg), Some(r), Some(g), Some(b)) =
                                 (iter.next(), iter.next(), iter.next(), iter.next())
                             {
-                                if let (Ok(red), Ok(green), Ok(blue)) =
-                                    (u8::try_from(red), u8::try_from(green), u8::try_from(blue))
+                                if let (Ok(r), Ok(g), Ok(b)) =
+                                    (u8::try_from(r), u8::try_from(g), u8::try_from(b))
                                 {
                                     match fg_or_bg {
                                         0 => {
-                                            return Some(Sequence::PabloTrueColourBackground {
-                                                red,
-                                                green,
-                                                blue,
-                                            });
+                                            return Some(Sequence::TrueColourBg { r, g, b });
                                         }
                                         1 => {
-                                            return Some(Sequence::PabloTrueColourForeground {
-                                                red,
-                                                green,
-                                                blue,
-                                            });
+                                            return Some(Sequence::TrueColourFg { r, g, b });
                                         }
                                         _ => {}
                                     }
@@ -253,6 +262,7 @@ impl Iterator for Parser {
                         sauce_start,
                     } => {
                         if self.position == sauce_start + 128 {
+                            self.state = State::Literal;
                             match Sauce::try_from(&self.bytes[eof_start..self.position]) {
                                 Ok(sauce) => return Some(Sequence::SauceRecord(Box::new(sauce))),
                                 Err(err) => eprintln!("{err}"),
@@ -296,9 +306,7 @@ impl Iterator for Parser {
 #[test]
 fn test() {
     // let bytes = std::fs::read("/Users/andyh/src/ansimation.js/docs/ans/rad-PIRANHA.ANS").unwrap();
-    let bytes = std::fs::read("/Users/andyh/src/ansimation.js/docs/ans/LD-TFGS.ANS").unwrap();
-    let mut parser = Parser::new(None);
-    parser.input(bytes);
+    let parser = AnsiParser::read("/Users/andyh/src/ansimation.js/docs/ans/LD-TFGS.ANS").unwrap();
     if let Some(Sequence::SauceRecord(sauce)) = parser.last() {
         println!("{sauce}");
     }
