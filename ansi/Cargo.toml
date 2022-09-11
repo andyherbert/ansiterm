@@ -12,5 +12,6 @@ chrono = "0.4"
 clap = { version = "3.0",  features = ["derive"] }
 csv = "1.1"
 image = "0.23"
+img2bin = { version = "0.1", path = "../img2bin" }
 serde_json = "1.0"
 stdin_receiver = { version = "0.1", path = "../stdin_receiver" }

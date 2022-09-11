@@ -2,7 +2,7 @@ use crate::cp437::CP437Error;
 use serde::{de, Deserialize, Serialize};
 use std::fmt;
 
-#[derive(Debug, Default, Clone, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct CP437Char {
     pub byte: u8,
     pub ch: char,

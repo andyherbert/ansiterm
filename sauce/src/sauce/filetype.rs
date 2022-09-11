@@ -3,7 +3,7 @@ use regex::Regex;
 use serde::{de, Deserialize, Serialize};
 pub use std::{fmt, str::FromStr};
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum FileType {
     None,
     Ascii,

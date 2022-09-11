@@ -3,7 +3,7 @@ use serde::{de, Deserialize, Serialize};
 use std::{fmt, slice::Iter, str::FromStr};
 
 /// Structure to store a string represented by Codepage 437 glyphs
-#[derive(Debug, Default, Clone, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct CP437String {
     bytes: Vec<u8>,
     chars: Vec<CP437Char>,

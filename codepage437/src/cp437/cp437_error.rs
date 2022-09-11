@@ -1,7 +1,7 @@
 use std::{error, fmt};
 
 /// Error to indicate a string cannot be represented with Codepage 437 glyphs
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum CP437Error {
     NoEquivalentGlyph,
 }

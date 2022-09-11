@@ -9,7 +9,7 @@ use image::{DynamicImage, ImageBuffer, Pixel};
 use std::{fs, path::Path};
 
 /// Structure to hold, read, write, and generate rgba data for fonts
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Font {
     pub bytes: Vec<u8>,
     pub width: usize,
@@ -58,6 +58,30 @@ impl Font {
             Ok(()) => Ok(()),
             Err(_err) => Err(FontError::CannotWriteFile),
         }
+    }
+
+    /// Generates bitmask data for a [Font]
+    pub fn to_bitmask(&self, code: u8) -> Vec<bool> {
+        let mut bitmask = Vec::with_capacity(self.width * self.height);
+        let offset = code as usize * self.height;
+        for byte in &self.bytes[offset..offset + self.height] {
+            for bit_position in (0..self.width).rev() {
+                match byte & (1 << bit_position) {
+                    0 => bitmask.push(false),
+                    _ => bitmask.push(true),
+                }
+            }
+        }
+        bitmask
+    }
+
+    /// Generates bitmask data for a [Font]
+    pub fn to_bitmasks(&self) -> Vec<Vec<bool>> {
+        let mut bitmasks = Vec::with_capacity(256);
+        for code in 0..=255 {
+            bitmasks.push(self.to_bitmask(code));
+        }
+        bitmasks
     }
 
     /// Generates RGBA data for a [Font] using fg and bg data

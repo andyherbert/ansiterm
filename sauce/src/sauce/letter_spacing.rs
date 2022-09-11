@@ -2,7 +2,7 @@ use crate::SauceError;
 use serde::{de, Deserialize, Serialize};
 pub use std::{fmt, str::FromStr};
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum LetterSpacing {
     None,
     EightPixels,

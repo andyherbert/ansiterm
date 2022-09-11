@@ -8,6 +8,7 @@ members = [
     "basic_waves",
     "codepage437",
     "ega_palette",
+    "img2bin",
     "sauce",
     "stdin_receiver",
 ]

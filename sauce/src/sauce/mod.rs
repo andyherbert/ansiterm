@@ -53,7 +53,7 @@ fn unpack(bytes: &[u8]) -> usize {
     value
 }
 
-#[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Eq, Serialize)]
 pub struct Sauce {
     pub title: CP437String,
     pub author: CP437String,
@@ -225,9 +225,9 @@ impl From<&Sauce> for Vec<u8> {
         sauce_bytes[7..=41].copy_from_slice(sauce.title.pad_with_spaces(35).as_slice());
         sauce_bytes[42..=61].copy_from_slice(sauce.author.pad_with_spaces(20).as_slice());
         sauce_bytes[62..=81].copy_from_slice(sauce.group.pad_with_spaces(20).as_slice());
-        sauce_bytes[82..=85].copy_from_slice(sauce.year.as_slice());
-        sauce_bytes[86..=87].copy_from_slice(sauce.month.as_slice());
-        sauce_bytes[88..=89].copy_from_slice(sauce.date.as_slice());
+        sauce_bytes[82..=85].copy_from_slice(sauce.year.pad_with_spaces(4).as_slice());
+        sauce_bytes[86..=87].copy_from_slice(sauce.month.pad_with_spaces(2).as_slice());
+        sauce_bytes[88..=89].copy_from_slice(sauce.date.pad_with_spaces(2).as_slice());
         pack(sauce.filesize, &mut sauce_bytes[90..=93]);
         sauce_bytes[94] = u8::from(&sauce.datatype);
         sauce_bytes[95] = u8::from(&sauce.filetype);

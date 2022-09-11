@@ -2,7 +2,7 @@ use codepage437::{raw, CP437Error, CP437String, Font, FontError};
 use serde::{de, Deserialize, Serialize};
 use std::{fmt, str::FromStr};
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum InfoS {
     IbmVga,
     IbmVga50,

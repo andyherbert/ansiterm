@@ -4,7 +4,7 @@ use std::{fmt, str::FromStr};
 
 use crate::COMNT_HEAD;
 
-#[derive(Clone, Default, Debug, PartialEq)]
+#[derive(Clone, Default, Debug, PartialEq, Eq)]
 pub struct Comments {
     strings: Vec<CP437String>,
 }

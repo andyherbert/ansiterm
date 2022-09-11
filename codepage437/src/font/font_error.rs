@@ -1,7 +1,7 @@
 use std::{error, fmt};
 
 /// Custom error used when generating, reading, and writing fonts
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum FontError {
     CouldNotLoadFont,
     CouldNotLocateFont,

@@ -1,0 +1,8 @@
+[package]
+name = "img2bin"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+ansiart = { version = "0.1", path = "../ansiart" }
+image = "0.24"

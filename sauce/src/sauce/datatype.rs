@@ -2,7 +2,7 @@ use crate::{sauce::FileType, SauceError};
 use serde::{Deserialize, Serialize};
 pub use std::{fmt, str::FromStr};
 
-#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
 pub enum DataType {
     None,
     Character,

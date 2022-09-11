@@ -8,6 +8,14 @@ mod tests;
 pub type Rgba = [u8; 4];
 /// Represents red, green, and blue values
 pub type Rgb = [u8; 3];
+/// Represents Xyz values
+pub type Xyz = [f64; 3];
+/// Represents Lab values
+pub type Lab = [f64; 3];
+
+// "D65" is a standard 6500K Daylight light source.
+// https://en.wikipedia.org/wiki/Illuminant_D65
+const D65: Xyz = [95.047, 100.0, 108.883];
 
 /// The order of colors in the [CGA palette](https://en.wikipedia.org/wiki/Color_Graphics_Adapter)
 pub static CGA_ORDER: [u8; 16] = [0, 1, 2, 3, 4, 5, 20, 7, 56, 57, 58, 59, 60, 61, 62, 63];
@@ -39,6 +47,42 @@ fn ega_to_rgb(value: u8) -> Rgb {
     [red, green, blue]
 }
 
+// Returns XYZ information for the specified RGB value
+// https://www.image-engineering.de/library/technotes/958-how-to-convert-between
+fn rgb_to_xyz(rgb: Rgb) -> Xyz {
+    let rgb = rgb.map(|value| {
+        let v = value as f64 / 255.0;
+        if v <= 0.04045 {
+            v / 12.92
+        } else {
+            ((v + 0.055) / 1.055).powf(2.4)
+        }
+    });
+    [
+        ((0.4124564 * rgb[0]) + (0.3575761 * rgb[1]) + (0.1804375 * rgb[2])) * 100.0,
+        ((0.2126729 * rgb[0]) + (0.7151522 * rgb[1]) + (0.0721750 * rgb[2])) * 100.0,
+        ((0.0193339 * rgb[0]) + (0.1191920 * rgb[1]) + (0.9503041 * rgb[2])) * 100.0,
+    ]
+}
+
+// Returns LAB information for the specified XYZ value
+// http://www.easyrgb.com/en/math.php
+fn xyz_to_lab(mut xyz: Xyz) -> Lab {
+    for (value, reference) in xyz.iter_mut().zip(D65.iter()) {
+        *value /= reference;
+        if *value > 0.008856 {
+            *value = (*value).powf(1.0 / 3.0);
+        } else {
+            *value = *value * 7.787 + 16.0 / 116.0;
+        }
+    }
+    [
+        116.0 * xyz[1] - 16.0,
+        500.0 * (xyz[0] - xyz[1]),
+        200.0 * (xyz[1] - xyz[2]),
+    ]
+}
+
 /// Represents an EGA color
 #[derive(Debug, Clone)]
 pub struct EgaColor {
@@ -48,6 +92,10 @@ pub struct EgaColor {
     pub rgba: Rgba,
     /// The RGB value
     pub rgb: Rgb,
+    /// The XYZ value
+    pub xyz: Xyz,
+    /// The LAB value
+    pub lab: Lab,
 }
 
 impl EgaColor {
@@ -55,7 +103,15 @@ impl EgaColor {
     pub fn new(value: u8) -> EgaColor {
         let rgba = ega_to_rgba(value);
         let rgb = ega_to_rgb(value);
-        EgaColor { value, rgba, rgb }
+        let xyz = rgb_to_xyz(rgb);
+        let lab = xyz_to_lab(xyz);
+        EgaColor {
+            value,
+            rgba,
+            rgb,
+            xyz,
+            lab,
+        }
     }
 }
 
@@ -110,6 +166,31 @@ impl EgaPalette {
     /// Returns a reference to an element depending on the type of index.
     pub fn get(&self, index: usize) -> Option<&EgaColor> {
         self.colors.get(index)
+    }
+
+    /// Returns the index (or None) of a specific Rgba
+    pub fn index_of(&self, find: &Rgba) -> Option<usize> {
+        self.colors.iter().position(|col| &col.rgba == find)
+    }
+
+    /// Returns the closest colour of a specific Rgba (alpha is ignored)
+    pub fn closest(&self, find: &Rgba) -> usize {
+        let rgb = [find[0], find[1], find[2]];
+        let xyz = rgb_to_xyz(rgb);
+        let lab = xyz_to_lab(xyz);
+        let mut closest: Option<(usize, f64)> = None;
+        for (index, col) in self.colors.iter().enumerate() {
+            let value = ((lab[0] - col.lab[0]).powf(2.0)
+                + (lab[1] - col.lab[1]).powf(2.0)
+                + (lab[2] - col.lab[2]).powf(2.0))
+            .sqrt();
+            match closest {
+                Some((_, prev)) if value < prev => closest = Some((index, value)),
+                None => closest = Some((index, value)),
+                _ => continue,
+            }
+        }
+        closest.expect("match").0
     }
 }
 
