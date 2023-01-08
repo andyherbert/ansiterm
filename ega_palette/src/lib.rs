@@ -32,7 +32,7 @@ fn convert_ega_to_rgb(value: u8) -> (u8, u8, u8) {
     let blue = (((value & 0b001000) >> 3) + ((value & 0b000001) << 1)) * 0x55;
     let green = (((value & 0b010000) >> 4) + (value & 0b000010)) * 0x55;
     let red = (((value & 0b100000) >> 5) + ((value & 0b000100) >> 1)) * 0x55;
-    (red as u8, green as u8, blue as u8)
+    (red, green, blue)
 }
 
 // Returns RGBA information for the specified 6 bit EGA value
