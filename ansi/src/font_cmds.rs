@@ -41,18 +41,18 @@ pub enum FontCommand {
 
 pub fn font_cmds(font_cmd: FontCommand) {
     match font_cmd {
-        FontCommand::ToPng { fon, png } => match Font::read(&fon) {
+        FontCommand::ToPng { fon, png } => match Font::read(fon) {
             Err(err) => eprintln!("{err}"),
             Ok(font) => {
-                if let Err(err) = font.write_image(&png) {
+                if let Err(err) = font.write_image(png) {
                     eprintln!("{err}");
                 }
             }
         },
-        FontCommand::ToFon { png, fon } => match Font::read_image(&png) {
+        FontCommand::ToFon { png, fon } => match Font::read_image(png) {
             Err(err) => eprintln!("{err}"),
             Ok(font) => {
-                if let Err(err) = font.write(&fon) {
+                if let Err(err) = font.write(fon) {
                     eprintln!("{err}");
                 }
             }
@@ -62,7 +62,7 @@ pub fn font_cmds(font_cmd: FontCommand) {
             Ok(info_s) => match Font::try_from(info_s) {
                 Err(err) => eprintln!("{err}"),
                 Ok(font) => {
-                    if let Err(err) = font.write_image(&png) {
+                    if let Err(err) = font.write_image(png) {
                         eprintln!("{err}");
                     }
                 }
@@ -73,7 +73,7 @@ pub fn font_cmds(font_cmd: FontCommand) {
             Ok(info_s) => match Font::try_from(info_s) {
                 Err(err) => eprintln!("{err}"),
                 Ok(font) => {
-                    if let Err(err) = font.write(&fon) {
+                    if let Err(err) = font.write(fon) {
                         eprintln!("{err}");
                     }
                 }

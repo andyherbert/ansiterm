@@ -4,7 +4,7 @@ use std::{fs, path::PathBuf};
 pub fn export(path: PathBuf, files: Vec<PathBuf>) {
     let sauce = files
         .iter()
-        .filter_map(|file| match Sauce::read(&file) {
+        .filter_map(|file| match Sauce::read(file) {
             Ok(Some(sauce)) => Some(sauce),
             _ => None,
         })
