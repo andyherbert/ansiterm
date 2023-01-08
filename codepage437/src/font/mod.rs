@@ -145,9 +145,7 @@ impl TryFrom<&Font> for ImageBuffer<image::Rgba<u8>, Vec<u8>> {
             for x in (0..width).step_by(font.width) {
                 let rgba = font.to_bytes(code, &WHITE_RGBA, &BLACK_RGBA);
                 buffer.draw_font(x, y, font.width, font.width * 16, &rgba);
-                if code < 255 {
-                    code += 1;
-                }
+                code = code.saturating_add(1);
             }
         }
         match ImageBuffer::from_vec(width as u32, height as u32, buffer) {
