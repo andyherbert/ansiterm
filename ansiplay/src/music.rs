@@ -134,14 +134,14 @@ impl Display for MusicEntity {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
             MusicEntity::Operation(operation) => operation.fmt(f),
-            MusicEntity::Tempo(value) => write!(f, "T{}", value),
-            MusicEntity::Octave(value) => write!(f, "O{}", value),
-            MusicEntity::Length(value) => write!(f, "L{}", value),
-            MusicEntity::RawNote(value) => write!(f, "N{}", value),
-            MusicEntity::Pause(length) => write!(f, "P{}", length),
+            MusicEntity::Tempo(value) => write!(f, "T{value}"),
+            MusicEntity::Octave(value) => write!(f, "O{value}"),
+            MusicEntity::Length(value) => write!(f, "L{value}"),
+            MusicEntity::RawNote(value) => write!(f, "N{value}"),
+            MusicEntity::Pause(length) => write!(f, "P{length}"),
             MusicEntity::IncreaseOctave => write!(f, ">"),
             MusicEntity::DecreaseOctave => write!(f, "<"),
-            MusicEntity::Note { note, info } => write!(f, "{}{}", note, info),
+            MusicEntity::Note { note, info } => write!(f, "{note}{info}"),
             MusicEntity::SoundCode(info) => info.fmt(f),
         }
     }
@@ -198,23 +198,23 @@ impl Display for NoteSign {
 impl fmt::Display for SoundCodeInfo {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self.frequency {
-            Some(value) => write!(f, "{};", value)?,
+            Some(value) => write!(f, "{value};")?,
             None => write!(f, ";")?,
         }
         match self.duration {
-            Some(value) => write!(f, "{};", value)?,
+            Some(value) => write!(f, "{value};")?,
             None => write!(f, ";")?,
         }
         match self.cycles {
-            Some(value) => write!(f, "{};", value)?,
+            Some(value) => write!(f, "{value};")?,
             None => write!(f, ";")?,
         }
         match self.delay {
-            Some(value) => write!(f, "{};", value)?,
+            Some(value) => write!(f, "{value};")?,
             None => write!(f, ";")?,
         }
         match self.variation {
-            Some(ref variation) => write!(f, "{}", variation),
+            Some(ref variation) => write!(f, "{variation}"),
             None => Ok(()),
         }
     }
@@ -223,7 +223,7 @@ impl fmt::Display for SoundCodeInfo {
 impl Display for Variation {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
-            Variation::Value(value) => write!(f, "{}", value),
+            Variation::Value(value) => write!(f, "{value}"),
             Variation::Random => write!(f, "*"),
         }
     }

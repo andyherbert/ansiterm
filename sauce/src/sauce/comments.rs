@@ -68,7 +68,7 @@ impl fmt::Display for Comments {
             .iter()
             .map(|cp437| cp437.pad_with_spaces(64).to_string())
             .collect::<String>();
-        write!(f, "{}", string)
+        write!(f, "{string}")
     }
 }
 
