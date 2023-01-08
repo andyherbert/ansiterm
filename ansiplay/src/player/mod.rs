@@ -82,7 +82,7 @@ impl Player {
         let mut extra = 0.0;
         for dot in 0..dots {
             extra += match dot {
-                0 => note_length as f32 * 1.0 / 2.0,
+                0 => note_length * 1.0 / 2.0,
                 _ => 1.0 / 2.0,
             }
         }

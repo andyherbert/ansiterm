@@ -115,7 +115,7 @@ impl<'a> MusicSequenceIterator<'a> {
             None | Some(ascii::SPACE) => {}
             Some(_) => return None,
         }
-        let value = prefix as f32 + postfix as f32;
+        let value = prefix as f32 + postfix;
         if minus {
             Some(-value)
         } else {
